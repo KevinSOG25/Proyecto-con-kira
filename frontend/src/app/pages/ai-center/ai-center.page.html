@@ -1,0 +1,138 @@
+<h2 class="page-title mb-1">Centro de IA</h2>
+<p class="text-muted mb-4">
+  Sube tus documentos en PDF y deja que Gemini 1.5 Flash extraiga la información clave.
+</p>
+
+<div class="row g-4">
+  <!-- SYLLABUS -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">📄 Syllabus</h5>
+        <p class="text-muted small">
+          Extrae la materia, los cortes de evaluación con sus porcentajes y las fechas clave.
+        </p>
+
+        <input
+          type="file"
+          accept="application/pdf"
+          class="form-control mb-2"
+          (change)="onSyllabusSelected($event)"
+        />
+        <button
+          class="btn btn-primary w-100"
+          [disabled]="!syllabusFile() || syllabusLoading()"
+          (click)="analyzeSyllabus()"
+        >
+          @if (syllabusLoading()) {
+            <span class="spinner-border spinner-border-sm me-1"></span> Analizando…
+          } @else {
+            Analizar syllabus
+          }
+        </button>
+
+        @if (syllabusError()) {
+          <div class="alert alert-warning mt-3 mb-0">{{ syllabusError() }}</div>
+        }
+
+        @if (syllabusResult(); as r) {
+          <div class="mt-3">
+            <div class="mb-2">
+              <span class="fw-semibold">Materia:</span> {{ r.materia || '—' }}
+              @if (r.codigo) { <span class="text-muted">({{ r.codigo }})</span> }
+              @if (r.creditos !== null) { <span class="text-muted"> · {{ r.creditos }} créditos</span> }
+            </div>
+
+            <h6 class="mt-3">Cortes de evaluación</h6>
+            @if (r.evaluaciones.length) {
+              <table class="table table-sm">
+                <thead>
+                  <tr><th>Corte</th><th class="text-end">%</th><th>Fecha</th></tr>
+                </thead>
+                <tbody>
+                  @for (e of r.evaluaciones; track $index) {
+                    <tr>
+                      <td>{{ e.nombreCorte }}</td>
+                      <td class="text-end">{{ e.porcentaje !== null ? e.porcentaje + '%' : '—' }}</td>
+                      <td>{{ e.fecha || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="text-muted small">No se detectaron cortes.</p>
+            }
+
+            @if (r.fechasClave.length) {
+              <h6>Fechas clave</h6>
+              <ul class="small">
+                @for (f of r.fechasClave; track $index) {
+                  <li>{{ f.descripcion }} — <span class="text-muted">{{ f.fecha || 'sin fecha' }}</span></li>
+                }
+              </ul>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- DIAPOSITIVAS -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">📊 Diapositivas de clase</h5>
+        <p class="text-muted small">
+          Genera un resumen ejecutivo, los temas principales y detecta fechas ocultas.
+        </p>
+
+        <input
+          type="file"
+          accept="application/pdf"
+          class="form-control mb-2"
+          (change)="onSlidesSelected($event)"
+        />
+        <button
+          class="btn btn-primary w-100"
+          [disabled]="!slidesFile() || slidesLoading()"
+          (click)="analyzeSlides()"
+        >
+          @if (slidesLoading()) {
+            <span class="spinner-border spinner-border-sm me-1"></span> Analizando…
+          } @else {
+            Analizar diapositivas
+          }
+        </button>
+
+        @if (slidesError()) {
+          <div class="alert alert-warning mt-3 mb-0">{{ slidesError() }}</div>
+        }
+
+        @if (slidesResult(); as r) {
+          <div class="mt-3">
+            <h6>Resumen ejecutivo</h6>
+            <p class="small">{{ r.resumenEjecutivo }}</p>
+
+            @if (r.temasPrincipales.length) {
+              <h6>Temas principales</h6>
+              <div class="mb-2">
+                @for (t of r.temasPrincipales; track $index) {
+                  <span class="badge bg-secondary me-1 mb-1">{{ t }}</span>
+                }
+              </div>
+            }
+
+            @if (r.fechasOcultas.length) {
+              <h6>Fechas detectadas</h6>
+              <ul class="small">
+                @for (f of r.fechasOcultas; track $index) {
+                  <li>{{ f.descripcion }} — <span class="text-muted">{{ f.fecha || 'sin fecha' }}</span></li>
+                }
+              </ul>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
