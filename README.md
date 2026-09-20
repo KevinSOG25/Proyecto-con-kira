@@ -15,6 +15,31 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - [x] **Fase 2** — OAuth 2.0 + lógica académica + integración Google Calendar
 - [x] **Fase 3** — Procesamiento con IA (Gemini 1.5 Flash): Gmail + documentos PDF
 - [x] **Fase 4** — Dockerfile multietapa y despliegue en Cloud Run
+- [x] **Frontend** — Angular + Bootstrap + RxJS (Dashboard de Materias, Tareas/Calendario, Centro de IA, auth Google)
+
+## Frontend (Angular)
+
+App SPA en `/frontend` (Angular standalone + signals, Bootstrap 5, RxJS) que consume la API del backend.
+
+### Vistas
+- **Dashboard de Materias** (`/materias`): listado y creación de materias, gestión de cortes y **simulador visual "¿Cuánto necesito para pasar?"**.
+- **Tareas y Calendario** (`/tareas`): lista de pendientes, alta de entregas con opción de **sincronizar con Google Calendar** y aviso de vencidas.
+- **Centro de IA** (`/ia`): subida de **syllabus** (muestra cortes/porcentajes extraídos) y **diapositivas** (resumen ejecutivo + temas + fechas detectadas).
+- **Auth Google**: botón "Conectar con Google" en la navbar que inicia el flujo OAuth del backend y refleja el estado de sesión.
+
+### Puesta en marcha
+```bash
+cd frontend
+pnpm install            # (npm 11.4.2 tiene un bug de resolución; se usa pnpm)
+pnpm start              # ng serve -> http://localhost:4200
+```
+La URL de la API se configura en `src/environments/` (`environment.development.ts` para local → `http://localhost:8080`; `environment.ts` para producción → URL de Cloud Run).
+
+### Build de producción
+```bash
+cd frontend
+pnpm exec ng build --configuration production   # salida en dist/frontend
+```
 
 ## Despliegue y contenedor (Fase 4)
 

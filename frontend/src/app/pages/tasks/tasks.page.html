@@ -1,0 +1,107 @@
+<h2 class="page-title mb-4">Tareas y Calendario</h2>
+
+@if (error()) { <div class="alert alert-warning">{{ error() }}</div> }
+@if (info()) { <div class="alert alert-success">{{ info() }}</div> }
+
+@if (subjects().length === 0) {
+  <div class="alert alert-info">
+    Primero crea una materia en el <a routerLink="/materias">Dashboard de Materias</a>.
+  </div>
+} @else {
+  <div class="row g-4">
+    <!-- Alta de tarea -->
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Nueva entrega</h5>
+
+          <label class="form-label small mb-1">Materia</label>
+          <select
+            class="form-select mb-2"
+            [ngModel]="selectedSubjectId()"
+            (ngModelChange)="onSubjectChange($event)"
+          >
+            @for (s of subjects(); track s.id) {
+              <option [value]="s.id">{{ s.nombre }}</option>
+            }
+          </select>
+
+          <label class="form-label small mb-1">Título</label>
+          <input class="form-control mb-2" [(ngModel)]="newTask.titulo" />
+
+          <label class="form-label small mb-1">Descripción</label>
+          <textarea class="form-control mb-2" rows="2" [(ngModel)]="newTask.descripcion"></textarea>
+
+          <label class="form-label small mb-1">Fecha límite</label>
+          <input type="datetime-local" class="form-control mb-2" [(ngModel)]="newTask.fechaLimite" />
+
+          <div class="form-check mb-3">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="syncCal"
+              [(ngModel)]="newTask.sincronizarCalendar"
+            />
+            <label class="form-check-label" for="syncCal">
+              📅 Sincronizar con Google Calendar
+            </label>
+          </div>
+
+          <button class="btn btn-primary w-100" (click)="createTask()">
+            Crear entrega
+          </button>
+          <p class="text-muted small mt-2 mb-0">
+            La sincronización requiere haber conectado tu cuenta de Google.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de pendientes -->
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Entregas</h5>
+          @if (tasks().length === 0) {
+            <p class="text-muted">No hay entregas para esta materia.</p>
+          } @else {
+            <ul class="list-group list-group-flush">
+              @for (t of tasks(); track t.id) {
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                  <div class="me-2">
+                    <div class="d-flex align-items-center">
+                      <input
+                        type="checkbox"
+                        class="form-check-input me-2"
+                        [checked]="t.completada"
+                        (change)="toggleComplete(t)"
+                      />
+                      <span [class.text-decoration-line-through]="t.completada">
+                        <strong>{{ t.titulo }}</strong>
+                      </span>
+                      @if (t.googleEventId) {
+                        <span class="badge bg-success ms-2" title="Sincronizada con Calendar">📅</span>
+                      }
+                      @if (isOverdue(t)) {
+                        <span class="badge bg-danger ms-2">Vencida</span>
+                      }
+                    </div>
+                    @if (t.descripcion) {
+                      <div class="small text-muted ms-4">{{ t.descripcion }}</div>
+                    }
+                    <div class="small text-muted ms-4">
+                      Límite: {{ t.fechaLimite | date: 'medium' }}
+                    </div>
+                  </div>
+                  <button class="btn btn-sm btn-link text-danger" (click)="deleteTask(t)">
+                    eliminar
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
