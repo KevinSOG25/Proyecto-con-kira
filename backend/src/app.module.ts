@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { buildTypeOrmOptions } from './config/typeorm.config';
-import { Subject } from './subjects/entities/subject.entity';
-import { Task } from './tasks/entities/task.entity';
-import { Grade } from './grades/entities/grade.entity';
-import { UserTokens } from './auth/entities/user-tokens.entity';
+import { AuthModule } from './auth/auth.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { GradesModule } from './grades/grades.module';
+import { CalendarModule } from './calendar/calendar.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -14,8 +15,11 @@ import { UserTokens } from './auth/entities/user-tokens.entity';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => buildTypeOrmOptions(config),
     }),
-    // Registro de entidades (los módulos de servicios se añadirán en fases siguientes).
-    TypeOrmModule.forFeature([Subject, Task, Grade, UserTokens]),
+    AuthModule,
+    SubjectsModule,
+    GradesModule,
+    CalendarModule,
+    TasksModule,
   ],
 })
 export class AppModule {}

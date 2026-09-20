@@ -11,10 +11,40 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 
 ## Estado del proyecto
 
-- [x] **Fase 1** — Entidades TypeORM y base de autenticación (en curso)
-- [ ] **Fase 2** — Lógica académica + integración Google Calendar
+- [x] **Fase 1** — Entidades TypeORM y base de autenticación
+- [x] **Fase 2** — OAuth 2.0 + lógica académica + integración Google Calendar
 - [ ] **Fase 3** — Procesamiento con IA (Gmail + documentos)
 - [ ] **Fase 4** — Dockerfile y despliegue en Cloud Run
+
+## Endpoints (Fase 2)
+
+### Autenticación
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/auth/google` | Redirige al consentimiento de Google (scopes Calendar + Gmail read-only) |
+| GET | `/auth/google/callback` | Callback OAuth; persiste tokens y redirige al frontend |
+
+### Materias
+`POST /subjects` · `GET /subjects` · `GET /subjects/:id` · `PATCH /subjects/:id` · `DELETE /subjects/:id`
+
+### Calificaciones y simulación
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/grades` | Crea un corte de una materia |
+| GET | `/grades/subject/:materiaId` | Lista los cortes de la materia |
+| GET | `/grades/subject/:materiaId/average` | Promedio ponderado actual |
+| GET | `/grades/subject/:materiaId/simulate?objetivo=4.0` | Nota mínima requerida para el objetivo |
+| PATCH | `/grades/:id` · DELETE `/grades/:id` | Actualiza / elimina un corte |
+
+### Tareas (con sincronización a Google Calendar)
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/tasks` | Crea la tarea e inserta evento en Calendar (guarda `googleEventId`) |
+| GET | `/tasks/subject/:materiaId` | Lista tareas de la materia |
+| PATCH | `/tasks/:id` | Actualiza la tarea y su evento de Calendar |
+| DELETE | `/tasks/:id` | Elimina la tarea y su evento de Calendar |
+
+> La creación de tarea acepta `"sincronizarCalendar": false` para omitir el evento.
 
 ## Estructura sugerida del backend
 
@@ -33,8 +63,10 @@ backend/
 │   ├── grades/                     # Módulo Calificaciones
 │   │   └── entities/grade.entity.ts
 │   ├── auth/                       # OAuth 2.0 de Google
-│   │   └── entities/user-tokens.entity.ts
-│   ├── calendar/                   # (Fase 2) Google Calendar
+│   │   ├── entities/user-tokens.entity.ts
+│   │   ├── google-auth.client.ts   # OAuth2Client + refresh automático
+│   │   ├── auth.service.ts · auth.controller.ts · auth.module.ts
+│   ├── calendar/                   # Google Calendar (CalendarService)
 │   ├── gmail/                      # (Fase 3) Procesamiento de correos
 │   ├── documents/                  # (Fase 3) PDFs con Gemini multimodal
 │   └── gemini/                     # (Fase 3) Cliente de Gemini
