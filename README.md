@@ -14,7 +14,38 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - [x] **Fase 1** — Entidades TypeORM y base de autenticación
 - [x] **Fase 2** — OAuth 2.0 + lógica académica + integración Google Calendar
 - [x] **Fase 3** — Procesamiento con IA (Gemini 1.5 Flash): Gmail + documentos PDF
-- [ ] **Fase 4** — Dockerfile y despliegue en Cloud Run
+- [x] **Fase 4** — Dockerfile multietapa y despliegue en Cloud Run
+
+## Despliegue y contenedor (Fase 4)
+
+### Ejecutar localmente con Docker
+```bash
+cd backend
+docker build -t academicsync-backend:local .
+docker run --rm -p 8080:8080 --env-file .env academicsync-backend:local
+```
+La API queda en `http://localhost:8080`. (Si Postgres corre en el host, usa `DB_HOST=host.docker.internal`.)
+
+### Desplegar en Cloud Run
+Script automatizado:
+```bash
+cd backend
+export PROJECT_ID=tu-project-id
+./deploy/deploy-cloud-run.sh
+```
+
+O el comando directo con la configuración de costos mínimos acordada:
+```bash
+gcloud run deploy academicsync-backend \
+  --image gcr.io/TU_PROJECT_ID/academicsync-backend:latest \
+  --region us-central1 --platform managed --allow-unauthenticated \
+  --port 8080 --min-instances 1 --max-instances 2 --memory 512Mi --cpu 1 \
+  --add-cloudsql-instances TU_PROJECT_ID:us-central1:academicsync-db \
+  --set-env-vars "NODE_ENV=production,DB_HOST=/cloudsql/TU_PROJECT_ID:us-central1:academicsync-db,DB_NAME=academicsync,DB_USERNAME=postgres,GEMINI_MODEL=gemini-1.5-flash" \
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,DB_PASSWORD=DB_PASSWORD:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest"
+```
+
+Detalle completo (Secret Manager, Cloud SQL, Cloud Scheduler): ver [`backend/deploy/README.md`](backend/deploy/README.md).
 
 ## Endpoints (Fase 3 — IA con Gemini 1.5 Flash)
 
@@ -94,7 +125,11 @@ backend/
 │   ├── gmail/                      # Escaneo de correos + extracción con IA
 │   └── documents/                  # PDFs con Gemini multimodal (syllabus/diapositivas)
 ├── .env.example
-├── Dockerfile                      # (Fase 4) multietapa para producción
+├── Dockerfile                      # Multietapa para producción (node:22-alpine, usuario no-root)
+├── .dockerignore
+├── deploy/
+│   ├── deploy-cloud-run.sh         # Script de build + gcloud run deploy
+│   └── README.md                   # Guía de despliegue (Secret Manager, Cloud SQL, Scheduler)
 ├── nest-cli.json
 ├── tsconfig.json
 └── package.json

@@ -1,0 +1,32 @@
+# Dependencias (se instalan dentro del contenedor)
+node_modules
+npm-debug.log*
+
+# Artefactos de build (se generan dentro del contenedor)
+dist
+build
+
+# Entorno y secretos — NUNCA copiar al contenedor
+.env
+.env.*
+!.env.example
+
+# Git y metadatos
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# Documentación y config de editor
+*.md
+.vscode
+.idea
+.DS_Store
+
+# Tests y cobertura
+test
+coverage
+*.spec.ts
+
+# TypeScript incremental
+*.tsbuildinfo
