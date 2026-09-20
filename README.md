@@ -13,8 +13,31 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 
 - [x] **Fase 1** — Entidades TypeORM y base de autenticación
 - [x] **Fase 2** — OAuth 2.0 + lógica académica + integración Google Calendar
-- [ ] **Fase 3** — Procesamiento con IA (Gmail + documentos)
+- [x] **Fase 3** — Procesamiento con IA (Gemini 1.5 Flash): Gmail + documentos PDF
 - [ ] **Fase 4** — Dockerfile y despliegue en Cloud Run
+
+## Endpoints (Fase 3 — IA con Gemini 1.5 Flash)
+
+> Usa el SDK oficial **`@google/genai`** (el anterior `@google/generative-ai` quedó en EOL en ago-2025).
+
+### Gmail — extracción de tareas desde correos
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/gmail/scan` | Escanea correos recientes por palabras clave y extrae con Gemini `{ titulo, fecha_limite, materia }` por correo |
+
+Body (todos opcionales):
+```json
+{ "keywords": ["tarea","parcial","brightspace"], "dias": 7, "maxResultados": 10 }
+```
+Devuelve, por correo, sus metadatos + el objeto extraído (`esTareaAcademica`, `titulo`, `fechaLimite`, `materia`, `confianza`). Requiere sesión de Google activa.
+
+### Documentos — PDFs con Gemini multimodal
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/documents/process?tipo=syllabus` | Extrae materia, evaluaciones (nombre + porcentaje + fecha) y fechas clave |
+| POST | `/documents/process?tipo=diapositivas` | Genera resumen ejecutivo, temas principales y detecta fechas ocultas |
+
+`multipart/form-data` con campo **`file`** (PDF, máx. 15 MB). El PDF se envía inline (base64) al modelo multimodal.
 
 ## Endpoints (Fase 2)
 
@@ -67,9 +90,9 @@ backend/
 │   │   ├── google-auth.client.ts   # OAuth2Client + refresh automático
 │   │   ├── auth.service.ts · auth.controller.ts · auth.module.ts
 │   ├── calendar/                   # Google Calendar (CalendarService)
-│   ├── gmail/                      # (Fase 3) Procesamiento de correos
-│   ├── documents/                  # (Fase 3) PDFs con Gemini multimodal
-│   └── gemini/                     # (Fase 3) Cliente de Gemini
+│   ├── gemini/                     # Cliente de Gemini (@google/genai)
+│   ├── gmail/                      # Escaneo de correos + extracción con IA
+│   └── documents/                  # PDFs con Gemini multimodal (syllabus/diapositivas)
 ├── .env.example
 ├── Dockerfile                      # (Fase 4) multietapa para producción
 ├── nest-cli.json

@@ -7,6 +7,9 @@ import { SubjectsModule } from './subjects/subjects.module';
 import { GradesModule } from './grades/grades.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { TasksModule } from './tasks/tasks.module';
+import { GeminiModule } from './gemini/gemini.module';
+import { GmailModule } from './gmail/gmail.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { TasksModule } from './tasks/tasks.module';
     GradesModule,
     CalendarModule,
     TasksModule,
+    GeminiModule,
+    GmailModule,
+    DocumentsModule,
   ],
 })
 export class AppModule {}
