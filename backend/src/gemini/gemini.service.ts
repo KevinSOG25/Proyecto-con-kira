@@ -8,7 +8,8 @@ import { GoogleGenAI, Part, Schema } from '@google/genai';
 
 /**
  * Envoltura del SDK oficial de Google GenAI (@google/genai) usando el
- * modelo Gemini 1.5 Pro. Centraliza:
+ * modelo Gemini 2.5 Pro (la familia 1.5/2.0 fue retirada por Google).
+ * Centraliza:
  *  - generación de texto libre,
  *  - generación con salida JSON forzada (responseMimeType + responseSchema),
  *  - entrada multimodal (PDF inline en base64).
@@ -28,11 +29,12 @@ export class GeminiService {
     }
     this.client = new GoogleGenAI({ apiKey: apiKey ?? '' });
 
-    // El modelo por defecto es 'gemini-1.5-pro' (el más capaz de la familia 1.5).
+    // El modelo por defecto es 'gemini-2.5-pro' (modelo Pro vigente; las
+    // familias 1.5 y 2.0 fueron retiradas por Google y devuelven 404).
     // El SDK @google/genai ya añade el prefijo "models/" internamente; por eso
     // NUNCA debe incluirse en el string. Si por configuración llega con el
     // prefijo, lo removemos para evitar el 404 "models/models/... not found".
-    const configured = this.config.get<string>('GEMINI_MODEL', 'gemini-1.5-pro');
+    const configured = this.config.get<string>('GEMINI_MODEL', 'gemini-2.5-pro');
     this.model = configured.replace(/^models\//i, '').trim();
     this.logger.log(`Modelo Gemini configurado: ${this.model}`);
   }

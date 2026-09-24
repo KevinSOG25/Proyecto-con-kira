@@ -5,7 +5,7 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - **Backend:** NestJS + TypeScript + TypeORM
 - **Base de datos:** PostgreSQL
 - **Frontend:** Angular + RxJS + Bootstrap *(fase posterior)*
-- **IA:** Gemini 1.5 Flash (multimodal)
+- **IA:** Gemini 2.5 Pro (multimodal, configurable vía `GEMINI_MODEL`)
 - **Integraciones:** Google OAuth 2.0, Google Calendar API, Gmail API
 - **Infraestructura:** Docker + Cloud Run + Cloud Scheduler
 
