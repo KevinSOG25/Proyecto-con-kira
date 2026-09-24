@@ -1,0 +1,80 @@
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <div>
+    <h2 class="page-title mb-1">Planeación Semanal</h2>
+    <p class="text-muted mb-0">Organiza tus 16 semanas del semestre.</p>
+  </div>
+
+  <div class="d-flex align-items-center gap-2">
+    <label class="form-label small mb-0 text-muted">Ámbito</label>
+    <select
+      class="form-select form-select-sm"
+      style="min-width: 220px"
+      [ngModel]="selectedSubjectId()"
+      (ngModelChange)="onSubjectChange($event)"
+    >
+      <option value="">📋 Planeación general</option>
+      @for (s of subjects(); track s.id) {
+        <option [value]="s.id">{{ s.nombre }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="alert alert-warning">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <p class="text-muted">Cargando planeaciones…</p>
+} @else {
+  <div class="accordion accordion-flush planning-accordion" id="weeksAccordion">
+    @for (week of weeks(); track trackWeek($index, week)) {
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button
+            class="accordion-button collapsed"
+            type="button"
+            data-bs-toggle="collapse"
+            [attr.data-bs-target]="'#week' + week.weekNumber"
+          >
+            <span class="week-badge">{{ week.weekNumber }}</span>
+            Semana {{ week.weekNumber }}
+            @if (week.content.trim()) {
+              <span class="badge rounded-pill bg-accent-soft ms-2">con notas</span>
+            }
+          </button>
+        </h2>
+        <div
+          [id]="'week' + week.weekNumber"
+          class="accordion-collapse collapse"
+          data-bs-parent="#weeksAccordion"
+        >
+          <div class="accordion-body">
+            <textarea
+              class="form-control planning-textarea"
+              rows="5"
+              placeholder="Escribe aquí la planeación, temas, lecturas o tareas de esta semana…"
+              [(ngModel)]="week.content"
+            ></textarea>
+            <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+              @if (week.saved) {
+                <span class="text-success small">✔ Guardado</span>
+              }
+              <button
+                class="btn btn-primary btn-sm"
+                [disabled]="week.saving"
+                (click)="saveWeek(week)"
+              >
+                @if (week.saving) {
+                  <span class="spinner-border spinner-border-sm me-1"></span> Guardando…
+                } @else {
+                  Guardar semana
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+}

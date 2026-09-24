@@ -25,7 +25,14 @@ App SPA en `/frontend` (Angular standalone + signals, Bootstrap 5, RxJS) que con
 - **Dashboard de Materias** (`/materias`): listado y creación de materias, gestión de cortes y **simulador visual "¿Cuánto necesito para pasar?"**.
 - **Tareas y Calendario** (`/tareas`): lista de pendientes, alta de entregas con opción de **sincronizar con Google Calendar** y aviso de vencidas.
 - **Centro de IA** (`/ia`): subida de **syllabus** (muestra cortes/porcentajes extraídos) y **diapositivas** (resumen ejecutivo + temas + fechas detectadas).
+- **Planeación Semanal** (`/planeacion`): acordeón de 16 semanas con área de notas por semana, con ámbito general o por materia (persistido en `weekly_plans`).
 - **Auth Google**: botón "Conectar con Google" en la navbar que inicia el flujo OAuth del backend y refleja el estado de sesión.
+
+### Edición de cortes
+En el Dashboard de Materias, cada corte tiene botones **Editar** / **Eliminar**. "Editar" convierte la fila en campos editables (peso % y nota) y guarda con `PATCH /grades/:id` (sin borrar/recrear).
+
+### Planeación Semanal (backend)
+Entidad TypeORM `WeeklyPlan` (`weekly_plans`) asociada al usuario (`googleUserId`) y opcionalmente a una materia, con `weekNumber` (1-16) y `content`. Endpoints: `GET /weekly-plans`, `POST /weekly-plans` (upsert por semana), `PUT /weekly-plans/:id`. Incluye migración `CreateWeeklyPlans` para Neon/producción (`npm run migration:run`).
 
 ### Puesta en marcha
 ```bash
