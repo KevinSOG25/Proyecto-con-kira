@@ -114,3 +114,21 @@ export interface SlidesAnalysis {
   temasPrincipales: string[];
   fechasOcultas: { descripcion: string; fecha: string | null }[];
 }
+
+
+/** ---- Planeación semanal ---- */
+export interface WeeklyPlan {
+  id: string;
+  googleUserId: string;
+  materiaId: string | null;
+  weekNumber: number;
+  content: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpsertWeeklyPlan {
+  weekNumber: number;
+  content: string;
+  materiaId?: string;
+}

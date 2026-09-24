@@ -42,6 +42,15 @@ export class SubjectsPage implements OnInit {
     calificacionObtenida: null,
   };
 
+  // --- Edición inline de cortes ---
+  editingGradeId = signal<string | null>(null);
+  editModel: { nombreCorte: string; porcentaje: number; calificacionObtenida: number | null } = {
+    nombreCorte: '',
+    porcentaje: 0,
+    calificacionObtenida: null,
+  };
+  savingEdit = signal(false);
+
   ngOnInit(): void {
     this.loadSubjects();
   }
@@ -113,6 +122,59 @@ export class SubjectsPage implements OnInit {
   deleteGrade(g: Grade): void {
     this.gradesService.remove(g.id).subscribe({
       next: () => this.grades.update((list) => list.filter((x) => x.id !== g.id)),
+    });
+  }
+
+  /** Inicia la edición inline de un corte, precargando sus valores. */
+  startEdit(g: Grade): void {
+    this.editingGradeId.set(g.id);
+    this.editModel = {
+      nombreCorte: g.nombreCorte,
+      porcentaje: Number(g.porcentaje),
+      calificacionObtenida:
+        g.calificacionObtenida === null ? null : Number(g.calificacionObtenida),
+    };
+  }
+
+  cancelEdit(): void {
+    this.editingGradeId.set(null);
+  }
+
+  isEditing(g: Grade): boolean {
+    return this.editingGradeId() === g.id;
+  }
+
+  /** Guarda los cambios del corte vía PATCH /grades/:id (sin borrar/recrear). */
+  saveEdit(g: Grade): void {
+    if (!this.editModel.nombreCorte.trim()) {
+      this.error.set('El nombre del corte no puede estar vacío.');
+      return;
+    }
+    this.savingEdit.set(true);
+    this.error.set(null);
+    const payload = {
+      nombreCorte: this.editModel.nombreCorte,
+      porcentaje: Number(this.editModel.porcentaje),
+      calificacionObtenida:
+        this.editModel.calificacionObtenida === null ||
+        (this.editModel.calificacionObtenida as unknown as string) === ''
+          ? null
+          : Number(this.editModel.calificacionObtenida),
+    };
+    this.gradesService.update(g.id, payload).subscribe({
+      next: (updated) => {
+        this.grades.update((list) =>
+          list.map((x) => (x.id === g.id ? updated : x)),
+        );
+        this.editingGradeId.set(null);
+        this.savingEdit.set(false);
+        // Si había una simulación, la recalculamos con los nuevos valores.
+        if (this.simulation()) this.runSimulation();
+      },
+      error: () => {
+        this.savingEdit.set(false);
+        this.error.set('No se pudo actualizar el corte.');
+      },
     });
   }
 

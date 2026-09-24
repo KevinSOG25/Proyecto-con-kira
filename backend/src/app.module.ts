@@ -10,6 +10,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { GeminiModule } from './gemini/gemini.module';
 import { GmailModule } from './gmail/gmail.module';
 import { DocumentsModule } from './documents/documents.module';
+import { WeeklyPlansModule } from './weekly-plans/weekly-plans.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DocumentsModule } from './documents/documents.module';
     GeminiModule,
     GmailModule,
     DocumentsModule,
+    WeeklyPlansModule,
   ],
 })
 export class AppModule {}

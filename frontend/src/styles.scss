@@ -1,18 +1,257 @@
-/* Estilos globales de AcademicSync */
+/* ============================================================
+   AcademicSync — Sistema de diseño global
+   Paleta moderna con acentos vibrantes, tipografía Inter,
+   sombras suaves, radios consistentes y transiciones.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Paleta */
+  --as-bg: #f4f6fb;
+  --as-surface: #ffffff;
+  --as-surface-alt: #f9fafe;
+  --as-text: #1c2230;
+  --as-text-muted: #6b7280;
+  --as-border: #e6e9f2;
+
+  /* Acentos (índigo -> violeta) */
+  --as-accent: #6366f1;
+  --as-accent-strong: #4f46e5;
+  --as-accent-soft: #eef0ff;
+  --as-accent-2: #8b5cf6;
+  --as-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --as-gradient-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+
+  /* Semánticos */
+  --as-success: #10b981;
+  --as-danger: #ef4444;
+  --as-warning: #f59e0b;
+  --as-info: #0ea5e9;
+
+  /* Radios */
+  --as-radius: 16px;
+  --as-radius-sm: 10px;
+
+  /* Sombras */
+  --as-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --as-shadow-md: 0 6px 16px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.05);
+  --as-shadow-lg: 0 18px 40px rgba(79, 70, 229, 0.14);
+}
+
 html,
 body {
   height: 100%;
 }
 
 body {
-  background-color: #f5f6f8;
+  background-color: var(--as-bg);
+  color: var(--as-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
 
-.card {
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+/* ---------- Tipografía ---------- */
+h1, h2, h3, h4, h5, h6,
+.page-title {
+  font-weight: 700;
+  color: var(--as-text);
 }
 
 .page-title {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.text-muted {
+  color: var(--as-text-muted) !important;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius);
+  background: var(--as-surface);
+  box-shadow: var(--as-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--as-shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.card.border-primary {
+  border-color: var(--as-accent) !important;
+  box-shadow: var(--as-shadow-lg);
+}
+
+/* ---------- Botones ---------- */
+.btn {
+  border-radius: var(--as-radius-sm);
   font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 0.5rem 1.1rem;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease,
+    border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-sm {
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+}
+
+/* Primario: gradiente vibrante */
+.btn-primary {
+  background: var(--as-gradient);
+  border: none;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: var(--as-gradient-hover);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  background: var(--as-accent);
+  opacity: 0.6;
+}
+
+/* Botones outline modernizados */
+.btn-outline-primary {
+  color: var(--as-accent-strong);
+  border-color: var(--as-accent);
+}
+.btn-outline-primary:hover {
+  background: var(--as-accent);
+  border-color: var(--as-accent);
+  color: #fff;
+}
+
+.btn-success {
+  background: var(--as-success);
+  border: none;
+}
+.btn-success:hover {
+  background: #0f9f74;
+}
+
+.btn-outline-danger {
+  color: var(--as-danger);
+  border-color: #f3b4b4;
+}
+.btn-outline-danger:hover {
+  background: var(--as-danger);
+  border-color: var(--as-danger);
+}
+
+.btn-light {
+  background: #fff;
+  border: none;
+  color: var(--as-accent-strong);
+  font-weight: 600;
+}
+
+/* ---------- Formularios ---------- */
+.form-control,
+.form-select {
+  border-radius: var(--as-radius-sm);
+  border: 1px solid var(--as-border);
+  background: var(--as-surface);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--as-accent);
+  box-shadow: 0 0 0 3px var(--as-accent-soft);
+}
+
+.form-label {
+  font-weight: 500;
+  color: var(--as-text-muted);
+}
+
+/* ---------- Navbar ---------- */
+.navbar.bg-primary {
+  background: var(--as-gradient) !important;
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.25);
+}
+
+.navbar-brand {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ---------- Tablas ---------- */
+.table {
+  --bs-table-color: var(--as-text);
+}
+.table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--as-text-muted);
+  border-bottom: 2px solid var(--as-border);
+}
+
+/* ---------- Badges ---------- */
+.badge.bg-success {
+  background: var(--as-success) !important;
+}
+.badge.bg-secondary {
+  background: var(--as-accent-2) !important;
+}
+
+/* ---------- Alerts (bordes redondeados) ---------- */
+.alert {
+  border-radius: var(--as-radius-sm);
+  border: none;
+}
+
+/* ---------- List group ---------- */
+.list-group-item {
+  border-color: var(--as-border);
+  transition: background 0.15s ease;
+}
+.list-group-item-action:hover {
+  background: var(--as-surface-alt);
+}
+.list-group-item.active {
+  background: var(--as-accent);
+  border-color: var(--as-accent);
+}
+
+/* Utilidad de acento */
+.text-accent {
+  color: var(--as-accent-strong) !important;
 }

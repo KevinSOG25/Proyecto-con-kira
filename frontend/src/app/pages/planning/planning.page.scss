@@ -1,0 +1,55 @@
+.planning-accordion {
+  .accordion-item {
+    border: 1px solid var(--as-border);
+    border-radius: var(--as-radius) !important;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    background: var(--as-surface);
+    box-shadow: var(--as-shadow-sm);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      box-shadow: var(--as-shadow-md);
+    }
+  }
+
+  .accordion-button {
+    font-weight: 600;
+    background: var(--as-surface);
+    color: var(--as-text);
+
+    &:not(.collapsed) {
+      background: var(--as-accent-soft);
+      color: var(--as-accent-strong);
+      box-shadow: none;
+    }
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+}
+
+.week-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--as-accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-right: 0.75rem;
+}
+
+.bg-accent-soft {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+}
+
+.planning-textarea {
+  border-radius: var(--as-radius-sm);
+  resize: vertical;
+}

@@ -111,22 +111,72 @@
             </thead>
             <tbody>
               @for (g of grades(); track g.id) {
-                <tr>
-                  <td>{{ g.nombreCorte }}</td>
-                  <td class="text-end">{{ g.porcentaje }}%</td>
-                  <td class="text-end">
-                    @if (g.calificacionObtenida !== null) {
-                      {{ g.calificacionObtenida }}
-                    } @else {
-                      <span class="text-muted">pendiente</span>
-                    }
-                  </td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-link text-danger p-0" (click)="deleteGrade(g)">
-                      eliminar
-                    </button>
-                  </td>
-                </tr>
+                @if (isEditing(g)) {
+                  <!-- Fila en modo edición inline -->
+                  <tr class="editing-row">
+                    <td>
+                      <input
+                        class="form-control form-control-sm"
+                        [(ngModel)]="editModel.nombreCorte"
+                      />
+                    </td>
+                    <td class="text-end">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        class="form-control form-control-sm text-end"
+                        [(ngModel)]="editModel.porcentaje"
+                      />
+                    </td>
+                    <td class="text-end">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="5"
+                        placeholder="pendiente"
+                        class="form-control form-control-sm text-end"
+                        [(ngModel)]="editModel.calificacionObtenida"
+                      />
+                    </td>
+                    <td class="text-end text-nowrap">
+                      <button
+                        class="btn btn-sm btn-success py-0 me-1"
+                        [disabled]="savingEdit()"
+                        (click)="saveEdit(g)"
+                      >
+                        @if (savingEdit()) {
+                          <span class="spinner-border spinner-border-sm"></span>
+                        } @else { Guardar }
+                      </button>
+                      <button class="btn btn-sm btn-outline-secondary py-0" (click)="cancelEdit()">
+                        Cancelar
+                      </button>
+                    </td>
+                  </tr>
+                } @else {
+                  <!-- Fila en modo lectura -->
+                  <tr>
+                    <td>{{ g.nombreCorte }}</td>
+                    <td class="text-end">{{ g.porcentaje }}%</td>
+                    <td class="text-end">
+                      @if (g.calificacionObtenida !== null) {
+                        {{ g.calificacionObtenida }}
+                      } @else {
+                        <span class="text-muted">pendiente</span>
+                      }
+                    </td>
+                    <td class="text-end text-nowrap">
+                      <button class="btn btn-sm btn-outline-primary py-0 me-1" (click)="startEdit(g)">
+                        Editar
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger py-0" (click)="deleteGrade(g)">
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                }
               }
               @if (grades().length === 0) {
                 <tr><td colspan="4" class="text-muted text-center">Sin cortes aún.</td></tr>
