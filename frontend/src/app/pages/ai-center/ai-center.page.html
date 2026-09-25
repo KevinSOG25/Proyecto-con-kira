@@ -45,14 +45,25 @@
 
             <h6 class="mt-3">Cortes de evaluación</h6>
             @if (r.evaluaciones.length) {
-              <table class="table table-sm">
+              <table class="table table-sm align-middle">
                 <thead>
                   <tr><th>Corte</th><th class="text-end">%</th><th>Fecha</th></tr>
                 </thead>
                 <tbody>
                   @for (e of r.evaluaciones; track $index) {
                     <tr>
-                      <td>{{ e.nombreCorte }}</td>
+                      <td>
+                        {{ e.nombreCorte }}
+                        @if (e.temas && e.temas.length) {
+                          <div class="mt-1">
+                            @for (t of e.temas; track $index) {
+                              <span class="badge rounded-pill topic-chip me-1 mb-1">{{ t }}</span>
+                            }
+                          </div>
+                        } @else {
+                          <div class="text-muted small fst-italic mt-1">Sin temas detectados</div>
+                        }
+                      </td>
                       <td class="text-end">{{ e.porcentaje !== null ? e.porcentaje + '%' : '—' }}</td>
                       <td>{{ e.fecha || '—' }}</td>
                     </tr>

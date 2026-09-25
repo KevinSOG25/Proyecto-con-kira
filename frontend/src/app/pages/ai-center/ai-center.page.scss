@@ -1,1 +1,8 @@
-/* Estilos específicos del Centro de IA (vacío por ahora). */
+/* Estilos específicos del Centro de IA */
+
+.topic-chip {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+  font-weight: 500;
+  font-size: 0.72rem;
+}

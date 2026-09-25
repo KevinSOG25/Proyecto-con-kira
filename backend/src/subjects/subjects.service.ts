@@ -107,6 +107,7 @@ export class SubjectsService {
             nombreCorte: c.nombreCorte,
             porcentaje: c.porcentaje ?? 0,
             calificacionObtenida: null,
+            temas: c.temas ?? [],
           }),
         );
 

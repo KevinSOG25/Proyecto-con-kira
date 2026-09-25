@@ -3,6 +3,8 @@ export interface EvaluacionExtraida {
   nombreCorte: string;
   porcentaje: number | null;
   fecha: string | null;
+  /** Temas específicos que se evalúan en este corte. */
+  temas?: string[];
 }
 
 /** Resultado del análisis de un syllabus. */

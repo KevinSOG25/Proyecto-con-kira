@@ -23,6 +23,7 @@ export interface Grade {
   nombreCorte: string;
   porcentaje: number;
   calificacionObtenida: number | null;
+  temas?: string[];
   createdAt?: string;
 }
 
@@ -31,6 +32,7 @@ export interface CreateGrade {
   nombreCorte: string;
   porcentaje: number;
   calificacionObtenida?: number | null;
+  temas?: string[];
 }
 
 export type SimulationEstado =
@@ -99,6 +101,7 @@ export interface EvaluacionExtraida {
   nombreCorte: string;
   porcentaje: number | null;
   fecha: string | null;
+  temas?: string[];
 }
 
 export interface SyllabusAnalysis {

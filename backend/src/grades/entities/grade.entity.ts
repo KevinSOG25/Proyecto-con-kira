@@ -36,6 +36,13 @@ export class Grade {
   @Column({ type: 'decimal', precision: 5, scale: 2 })
   porcentaje: number;
 
+  /**
+   * Temas específicos que se evalúan en este corte (extraídos del syllabus).
+   * Se almacena como arreglo de texto nativo de PostgreSQL (text[]).
+   */
+  @Column({ type: 'text', array: true, default: () => "'{}'" })
+  temas: string[];
+
   /** Nota obtenida en el corte. null si aún no se evalúa. */
   @Column({
     name: 'calificacion_obtenida',

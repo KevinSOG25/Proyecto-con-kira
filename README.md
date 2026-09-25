@@ -18,7 +18,7 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - [x] **Frontend** — Angular + Bootstrap + RxJS (Dashboard de Materias, Tareas/Calendario, Centro de IA, auth Google)
 - [x] **Dashboard estadístico** — Promedio ponderado semestral + gráfico de notas (chart.js/ng2-charts)
 - [x] **Resiliencia IA** — Exponential Backoff (503/429) + **Fallback Model** en las llamadas a Gemini
-- [x] **Importar syllabus → Materia** — botón "Crear Materia Automáticamente" (`POST /subjects/import`, transaccional)
+- [x] **Importar syllabus → Materia** — botón "Crear Materia Automáticamente" (`POST /subjects/import`, transaccional) con **temas por corte**
 - [x] **Semáforo de riesgo** — `riskLevel` (SAFE/WARNING/DANGER) por materia en el Dashboard
 - [x] **Fix import** — semestre por defecto en materias importadas + mensajes de error reales al gestionar cortes
 

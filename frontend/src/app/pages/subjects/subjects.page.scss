@@ -1,3 +1,24 @@
 .list-group-item.active small {
   color: rgba(255, 255, 255, 0.75) !important;
 }
+
+
+/* Temas por corte */
+.topic-toggle {
+  font-size: 0.75rem;
+  text-decoration: none;
+  color: var(--as-accent-strong);
+  font-weight: 500;
+}
+
+.topic-chip {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+  font-weight: 500;
+  font-size: 0.72rem;
+}
+
+.topics-row td {
+  background: var(--as-surface-alt);
+  border-top: none;
+}
