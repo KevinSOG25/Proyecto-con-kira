@@ -12,6 +12,9 @@
   "packageManager": "npm@11.4.2",
   "dependencies": {
     "bootstrap": "^5.3.3",
+    "chart.js": "^4.5.0",
+    "ng2-charts": "^10.0.0",
+    "@angular/cdk": "^22.1.0",
     "@angular/common": "^22.1.0",
     "@angular/compiler": "^22.1.0",
     "@angular/core": "^22.1.0",

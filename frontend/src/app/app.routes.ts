@@ -1,7 +1,12 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'materias' },
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./pages/dashboard/dashboard.page').then((m) => m.DashboardPage),
+  },
   {
     path: 'materias',
     loadComponent: () =>
@@ -22,5 +27,5 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/ai-center/ai-center.page').then((m) => m.AiCenterPage),
   },
-  { path: '**', redirectTo: 'materias' },
+  { path: '**', redirectTo: '' },
 ];
