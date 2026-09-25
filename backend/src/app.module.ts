@@ -11,6 +11,7 @@ import { GeminiModule } from './gemini/gemini.module';
 import { GmailModule } from './gmail/gmail.module';
 import { DocumentsModule } from './documents/documents.module';
 import { WeeklyPlansModule } from './weekly-plans/weekly-plans.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { WeeklyPlansModule } from './weekly-plans/weekly-plans.module';
     GmailModule,
     DocumentsModule,
     WeeklyPlansModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

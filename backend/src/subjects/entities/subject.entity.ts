@@ -23,7 +23,7 @@ export class Subject {
   @Column({ type: 'varchar', length: 50, nullable: true })
   codigo: string;
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: 'int', default: 3 })
   creditos: number;
 
   /** Semestre al que pertenece la materia. Ej: "2026-1" */

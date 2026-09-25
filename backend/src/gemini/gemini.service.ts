@@ -2,14 +2,28 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenAI, Part, Schema } from '@google/genai';
+import {
+  GenerateContentParameters,
+  GenerateContentResponse,
+  GoogleGenAI,
+  Part,
+  Schema,
+} from '@google/genai';
+
+/** Códigos HTTP que justifican reintento con backoff. */
+const RETRYABLE_STATUS = new Set([429, 503]);
+/** Número máximo de reintentos (además del intento inicial). */
+const MAX_RETRIES = 3;
+/** Retardo base en ms; crece exponencialmente: 2s, 4s, 8s. */
+const BASE_DELAY_MS = 2000;
 
 /**
  * Envoltura del SDK oficial de Google GenAI (@google/genai) usando el
- * modelo Gemini 3.1 Pro (modelo Pro vigente de la familia 3; las familias
- * 1.5 y 2.0 fueron retiradas por Google). Centraliza:
+ * modelo Gemini 3.8 Flash (stable vigente de la familia 3). Incluye
+ * Exponential Backoff ante errores transitorios 503/429. Centraliza:
  *  - generación de texto libre,
  *  - generación con salida JSON forzada (responseMimeType + responseSchema),
  *  - entrada multimodal (PDF inline en base64).
@@ -29,15 +43,13 @@ export class GeminiService {
     }
     this.client = new GoogleGenAI({ apiKey: apiKey ?? '' });
 
-    // El modelo por defecto es 'gemini-3.1-pro-preview' (el modelo Pro vigente
-    // de la familia 3; gemini-3-pro-preview y las familias 1.5/2.0 fueron
-    // retirados y devuelven 404).
+    // El modelo por defecto es 'gemini-3.8-flash' (stable vigente de la familia 3).
     // El SDK @google/genai ya añade el prefijo "models/" internamente; por eso
     // NUNCA debe incluirse en el string. Si por configuración llega con el
     // prefijo, lo removemos para evitar el 404 "models/models/... not found".
     const configured = this.config.get<string>(
       'GEMINI_MODEL',
-      'gemini-3.1-pro-preview',
+      'gemini-3.8-flash',
     );
     this.model = configured.replace(/^models\//i, '').trim();
     this.logger.log(`Modelo Gemini configurado: ${this.model}`);
@@ -57,7 +69,7 @@ export class GeminiService {
     schema: Schema,
   ): Promise<T> {
     try {
-      const response = await this.client.models.generateContent({
+      const response = await this.generateWithRetry({
         model: this.model,
         contents: [{ role: 'user', parts }],
         config: {
@@ -73,11 +85,8 @@ export class GeminiService {
         throw new Error('Gemini devolvió una respuesta vacía.');
       }
       return this.parseJson<T>(text);
-    } catch (err: any) {
-      this.logger.error(`Error al generar JSON con Gemini: ${err.message}`);
-      throw new InternalServerErrorException(
-        `Fallo en el procesamiento con Gemini: ${err.message}`,
-      );
+    } catch (err: unknown) {
+      throw this.toHttpException(err, 'JSON');
     }
   }
 
@@ -87,18 +96,91 @@ export class GeminiService {
     parts: Part[],
   ): Promise<string> {
     try {
-      const response = await this.client.models.generateContent({
+      const response = await this.generateWithRetry({
         model: this.model,
         contents: [{ role: 'user', parts }],
         config: { systemInstruction, temperature: 0.3 },
       });
       return response.text ?? '';
-    } catch (err: any) {
-      this.logger.error(`Error al generar texto con Gemini: ${err.message}`);
-      throw new InternalServerErrorException(
-        `Fallo en el procesamiento con Gemini: ${err.message}`,
+    } catch (err: unknown) {
+      throw this.toHttpException(err, 'texto');
+    }
+  }
+
+  /**
+   * Llama a generateContent aplicando Exponential Backoff:
+   * ante un 503 (UNAVAILABLE) o 429 (RESOURCE_EXHAUSTED), espera
+   * 2s, 4s, 8s y reintenta hasta MAX_RETRIES veces. Cualquier otro
+   * error se propaga de inmediato (no se reintenta).
+   */
+  private async generateWithRetry(
+    params: GenerateContentParameters,
+  ): Promise<GenerateContentResponse> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await this.client.models.generateContent(params);
+      } catch (err: unknown) {
+        lastError = err;
+        const status = this.extractStatus(err);
+
+        // No reintentar si el error no es transitorio o si ya agotamos intentos.
+        if (!RETRYABLE_STATUS.has(status) || attempt === MAX_RETRIES) {
+          throw err;
+        }
+
+        const delay = BASE_DELAY_MS * 2 ** attempt; // 2000, 4000, 8000
+        this.logger.warn(
+          `Gemini respondió ${status}. Reintento ${attempt + 1}/${MAX_RETRIES} en ${delay} ms…`,
+        );
+        await this.sleep(delay);
+      }
+    }
+
+    // Inalcanzable en teoría, pero satisface el tipado.
+    throw lastError;
+  }
+
+  /** Extrae el código HTTP de los distintos formatos de error del SDK. */
+  private extractStatus(err: unknown): number {
+    const e = err as {
+      status?: number;
+      code?: number;
+      response?: { status?: number };
+      message?: string;
+    };
+    if (typeof e?.status === 'number') return e.status;
+    if (typeof e?.code === 'number') return e.code;
+    if (typeof e?.response?.status === 'number') return e.response.status;
+    // Fallback: buscar el código en el mensaje (p. ej. "[503] ...").
+    const match = e?.message?.match(/\b(429|503)\b/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  /**
+   * Convierte el error en una excepción HTTP adecuada para el frontend.
+   * 503/429 tras agotar reintentos -> 503 (servicio no disponible).
+   */
+  private toHttpException(err: unknown, tipo: string): Error {
+    const status = this.extractStatus(err);
+    const message = (err as { message?: string })?.message ?? 'error desconocido';
+    this.logger.error(`Error al generar ${tipo} con Gemini: ${message}`);
+
+    if (RETRYABLE_STATUS.has(status)) {
+      return new ServiceUnavailableException(
+        'El servicio de IA (Gemini) está temporalmente saturado. ' +
+          'Se reintentó automáticamente sin éxito; inténtalo de nuevo en unos momentos.',
       );
     }
+    return new InternalServerErrorException(
+      `Fallo en el procesamiento con Gemini: ${message}`,
+    );
+  }
+
+  /** Promesa de espera. */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /** Construye una Part de texto. */

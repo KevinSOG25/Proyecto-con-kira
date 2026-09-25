@@ -16,6 +16,14 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - [x] **Fase 3** — Procesamiento con IA (Gemini 1.5 Flash): Gmail + documentos PDF
 - [x] **Fase 4** — Dockerfile multietapa y despliegue en Cloud Run
 - [x] **Frontend** — Angular + Bootstrap + RxJS (Dashboard de Materias, Tareas/Calendario, Centro de IA, auth Google)
+- [x] **Dashboard estadístico** — Promedio ponderado semestral + gráfico de notas (chart.js/ng2-charts)
+- [x] **Resiliencia IA** — Exponential Backoff (503/429) en las llamadas a Gemini
+
+## Dashboard estadístico y resiliencia IA
+
+- **Backend:** `GET /analytics/dashboard` calcula el **Promedio Ponderado Semestral** = Σ(notaFinal × créditos) / Σ créditos y devuelve la nota final por materia. La entidad `Subject` usa `creditos` con **default 3** (migración `SubjectCreditsDefault`).
+- **Gemini:** `GeminiService` reintenta con **Exponential Backoff** (2s, 4s, 8s; hasta 3 reintentos) ante `503`/`429` y devuelve `503` al frontend si se agotan. Modelo por defecto `gemini-3.8-flash`.
+- **Frontend:** `DashboardComponent` en la ruta principal (`/`) con **progress spinner** (anillo SVG) del promedio y **gráfico de barras** de notas por materia (chart.js + ng2-charts), siguiendo el estilo (gradientes, tarjetas, bordes redondeados).
 
 ## Frontend (Angular)
 

@@ -132,3 +132,22 @@ export interface UpsertWeeklyPlan {
   content: string;
   materiaId?: string;
 }
+
+
+/** ---- Analytics / Dashboard ---- */
+export interface SubjectGrade {
+  materiaId: string;
+  nombre: string;
+  codigo: string | null;
+  creditos: number;
+  notaFinal: number;
+  porcentajeEvaluado: number;
+  completa: boolean;
+}
+
+export interface DashboardAnalytics {
+  promedioPonderadoSemestral: number;
+  totalCreditos: number;
+  totalMaterias: number;
+  materias: SubjectGrade[];
+}
