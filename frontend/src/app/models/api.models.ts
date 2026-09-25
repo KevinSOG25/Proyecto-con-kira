@@ -135,13 +135,19 @@ export interface UpsertWeeklyPlan {
 
 
 /** ---- Analytics / Dashboard ---- */
+export type RiskLevel = 'SAFE' | 'WARNING' | 'DANGER';
+
 export interface SubjectGrade {
   materiaId: string;
   nombre: string;
   codigo: string | null;
   creditos: number;
   notaFinal: number;
+  notaAcumulada: number;
   porcentajeEvaluado: number;
+  porcentajeRestante: number;
+  notaNecesaria: number | null;
+  riskLevel: RiskLevel;
   completa: boolean;
 }
 
@@ -150,4 +156,13 @@ export interface DashboardAnalytics {
   totalCreditos: number;
   totalMaterias: number;
   materias: SubjectGrade[];
+}
+
+/** ---- Importación de syllabus ---- */
+export interface ImportSubjectPayload {
+  materia: string;
+  codigo?: string | null;
+  creditos?: number | null;
+  semestre?: string | null;
+  evaluaciones: EvaluacionExtraida[];
 }

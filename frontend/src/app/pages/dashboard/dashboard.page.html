@@ -82,6 +82,86 @@
     </div>
   </div>
 
+  <!-- Semáforo de riesgo por materia -->
+  <div class="d-flex align-items-center justify-content-between mt-4 mb-3">
+    <h5 class="mb-0">Semáforo de riesgo</h5>
+    <span class="text-muted small">Nota para aprobar: 3.0 · antes de la semana 8 (retiros)</span>
+  </div>
+
+  <div class="row g-3">
+    @for (m of d.materias; track m.materiaId) {
+      <div class="col-md-6 col-xl-4">
+        <div class="card risk-card h-100" [class]="riskCardClass(m.riskLevel)">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 class="mb-0 fw-bold">{{ m.nombre }}</h6>
+                @if (m.codigo) {
+                  <small class="text-muted">{{ m.codigo }}</small>
+                }
+              </div>
+              <span class="risk-icon" [title]="riskLabel(m.riskLevel)">
+                {{ riskIcon(m.riskLevel) }}
+              </span>
+            </div>
+
+            <div class="d-flex justify-content-between small text-muted mt-3">
+              <span>Acumulado: <strong class="text-dark">{{ m.notaAcumulada | number: '1.2-2' }}</strong></span>
+              <span>Evaluado: <strong class="text-dark">{{ m.porcentajeEvaluado }}%</strong></span>
+            </div>
+
+            <!-- Progreso de % evaluado -->
+            <div class="progress risk-progress mt-2">
+              <div
+                class="progress-bar"
+                role="progressbar"
+                [style.width.%]="m.porcentajeEvaluado"
+              ></div>
+            </div>
+
+            <!-- Mensaje de alerta según riesgo -->
+            @if (m.riskLevel === 'DANGER') {
+              <div class="risk-msg mt-3">
+                <strong>{{ riskIcon(m.riskLevel) }} {{ riskLabel(m.riskLevel) }}.</strong>
+                @if (m.notaNecesaria !== null && m.porcentajeRestante > 0) {
+                  Necesitarías <strong>{{ m.notaNecesaria | number: '1.2-2' }}</strong>
+                  en el {{ m.porcentajeRestante }}% restante, pero el máximo es 5.0.
+                  Aprobar ya no es posible.
+                } @else {
+                  El resultado final ({{ m.notaAcumulada | number: '1.2-2' }}) está por debajo de 3.0.
+                }
+              </div>
+            } @else if (m.riskLevel === 'WARNING') {
+              <div class="risk-msg mt-3">
+                <strong>{{ riskIcon(m.riskLevel) }} {{ riskLabel(m.riskLevel) }}.</strong>
+                Debes sacar al menos
+                <strong>{{ m.notaNecesaria | number: '1.2-2' }}</strong>
+                en el {{ m.porcentajeRestante }}% que queda para llegar a 3.0.
+              </div>
+            } @else {
+              <div class="risk-msg-safe mt-3 small text-muted">
+                @if (m.porcentajeEvaluado === 0) {
+                  Sin notas registradas aún.
+                } @else if (m.notaNecesaria !== null && m.notaNecesaria > 0 && m.porcentajeRestante > 0) {
+                  Con {{ m.notaNecesaria | number: '1.2-2' }} en lo que queda, aseguras el 3.0.
+                } @else {
+                  Aprobación asegurada. ✅
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+    @if (d.materias.length === 0) {
+      <div class="col-12">
+        <div class="card"><div class="card-body text-center text-muted">
+          No hay materias registradas.
+        </div></div>
+      </div>
+    }
+  </div>
+
   <!-- Tabla resumen -->
   <div class="card mt-4">
     <div class="card-body">

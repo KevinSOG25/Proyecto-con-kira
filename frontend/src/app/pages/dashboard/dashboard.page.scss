@@ -45,3 +45,65 @@
   position: relative;
   height: 320px;
 }
+
+
+/* ---- Semáforo de riesgo ---- */
+.risk-card {
+  border-left: 5px solid var(--as-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.risk-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.risk-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--as-border);
+
+  .progress-bar {
+    border-radius: 999px;
+  }
+}
+
+.risk-msg {
+  font-size: 0.85rem;
+  border-radius: var(--as-radius-sm);
+  padding: 0.6rem 0.75rem;
+}
+
+/* SAFE: verde sutil */
+.risk-safe {
+  border-left-color: var(--as-success);
+  .risk-progress .progress-bar {
+    background: var(--as-success);
+  }
+}
+
+/* WARNING: ámbar sutil */
+.risk-warning {
+  border-left-color: var(--as-warning);
+  background: linear-gradient(0deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.06));
+  .risk-progress .progress-bar {
+    background: var(--as-warning);
+  }
+  .risk-msg {
+    background: rgba(245, 158, 11, 0.12);
+    color: #92600a;
+  }
+}
+
+/* DANGER: rojo sutil */
+.risk-danger {
+  border-left-color: var(--as-danger);
+  background: linear-gradient(0deg, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.06));
+  .risk-progress .progress-bar {
+    background: var(--as-danger);
+  }
+  .risk-msg {
+    background: rgba(239, 68, 68, 0.12);
+    color: #a12020;
+  }
+}

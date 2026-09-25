@@ -11,6 +11,7 @@ import {
 import { SubjectsService } from './subjects.service';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
+import { ImportSubjectDto } from './dto/import-subject.dto';
 
 @Controller('subjects')
 export class SubjectsController {
@@ -19,6 +20,12 @@ export class SubjectsController {
   @Post()
   create(@Body() dto: CreateSubjectDto) {
     return this.subjectsService.create(dto);
+  }
+
+  /** Importa una materia + sus cortes desde el análisis de un syllabus. */
+  @Post('import')
+  import(@Body() dto: ImportSubjectDto) {
+    return this.subjectsService.importFromSyllabus(dto);
   }
 
   @Get()

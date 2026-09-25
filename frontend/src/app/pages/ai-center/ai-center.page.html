@@ -71,6 +71,33 @@
                 }
               </ul>
             }
+
+            <!-- Exportación directa a Materias -->
+            <hr />
+            @if (importedSubjectName(); as name) {
+              <div class="alert alert-success mb-0">
+                ✔ Materia <strong>{{ name }}</strong> creada con sus cortes.
+                <a routerLink="/materias" class="alert-link">Ver en Materias</a>.
+              </div>
+            } @else {
+              @if (importError()) {
+                <div class="alert alert-warning">{{ importError() }}</div>
+              }
+              <button
+                class="btn btn-primary w-100"
+                [disabled]="importing() || !r.materia"
+                (click)="createSubjectFromSyllabus()"
+              >
+                @if (importing()) {
+                  <span class="spinner-border spinner-border-sm me-1"></span> Creando materia…
+                } @else {
+                  ➕ Crear Materia Automáticamente
+                }
+              </button>
+              <p class="text-muted small mt-2 mb-0">
+                Se creará la materia con sus cortes. Requiere sesión de Google activa.
+              </p>
+            }
           </div>
         }
       </div>
