@@ -12,6 +12,7 @@ Reglas estrictas:
 - Responde ÚNICAMENTE con el JSON solicitado, sin texto adicional.
 - Extrae el nombre de la materia, su código y número de créditos si aparecen (si no, null).
 - En "evaluaciones" incluye cada corte/actividad calificable con su nombre, su porcentaje (número 0-100 o null) y su fecha en ISO 8601 (YYYY-MM-DD) o null.
+- Para cada corte, analiza el CRONOGRAMA/temario del documento y asigna en "temas" la lista de temas o unidades específicas que se evalúan en ese corte (p. ej. ["Límites", "Derivadas", "Regla de la cadena"]). Si el syllabus no detalla los temas de un corte, devuelve un arreglo vacío []. No inventes temas que no aparezcan en el documento.
 - En "fechasClave" incluye fechas importantes que no sean necesariamente evaluaciones (inicio, receso, entrega de notas, etc.).
 - No inventes datos que no aparezcan en el documento.`;
 
@@ -37,6 +38,7 @@ const SYLLABUS_SCHEMA = {
           nombreCorte: { type: Type.STRING },
           porcentaje: { type: Type.NUMBER, nullable: true },
           fecha: { type: Type.STRING, nullable: true },
+          temas: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
         required: ['nombreCorte'],
       },

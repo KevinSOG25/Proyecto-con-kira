@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsNumber,
   IsOptional,
   IsString,
@@ -28,4 +29,10 @@ export class CreateGradeDto {
   @Min(0)
   @Max(5)
   calificacionObtenida?: number;
+
+  /** Temas evaluados en el corte. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  temas?: string[];
 }

@@ -1,4 +1,12 @@
-import { IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsArray,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateGradeDto {
   @IsOptional()
@@ -17,4 +25,9 @@ export class UpdateGradeDto {
   @Min(0)
   @Max(5)
   calificacionObtenida?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  temas?: string[];
 }

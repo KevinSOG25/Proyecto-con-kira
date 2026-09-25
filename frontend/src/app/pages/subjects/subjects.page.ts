@@ -43,6 +43,17 @@ export class SubjectsPage implements OnInit {
     calificacionObtenida: null,
   };
 
+  // --- Temas por corte (expandir/colapsar) ---
+  expandedTopicsId = signal<string | null>(null);
+
+  toggleTopics(g: Grade): void {
+    this.expandedTopicsId.update((cur) => (cur === g.id ? null : g.id));
+  }
+
+  isTopicsOpen(g: Grade): boolean {
+    return this.expandedTopicsId() === g.id;
+  }
+
   // --- Edición inline de cortes ---
   editingGradeId = signal<string | null>(null);
   editModel: { nombreCorte: string; porcentaje: number; calificacionObtenida: number | null } = {

@@ -68,6 +68,7 @@ export class GradesService {
       nombreCorte: dto.nombreCorte,
       porcentaje: dto.porcentaje,
       calificacionObtenida: dto.calificacionObtenida ?? null,
+      temas: dto.temas ?? [],
     });
     return this.gradesRepo.save(grade);
   }

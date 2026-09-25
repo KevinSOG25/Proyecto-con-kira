@@ -28,6 +28,12 @@ export class ImportCutDto {
   @IsOptional()
   @IsString()
   fecha?: string | null;
+
+  /** Temas específicos que se evalúan en este corte. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  temas?: string[] | null;
 }
 
 /**

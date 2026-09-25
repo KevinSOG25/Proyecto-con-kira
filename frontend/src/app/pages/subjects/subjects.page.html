@@ -158,7 +158,18 @@
                 } @else {
                   <!-- Fila en modo lectura -->
                   <tr>
-                    <td>{{ g.nombreCorte }}</td>
+                    <td>
+                      {{ g.nombreCorte }}
+                      @if (g.temas && g.temas.length) {
+                        <button
+                          class="btn btn-sm btn-link p-0 ms-1 topic-toggle"
+                          (click)="toggleTopics(g)"
+                          [attr.aria-expanded]="isTopicsOpen(g)"
+                        >
+                          {{ isTopicsOpen(g) ? '▾' : '▸' }} Ver temas ({{ g.temas.length }})
+                        </button>
+                      }
+                    </td>
                     <td class="text-end">{{ g.porcentaje }}%</td>
                     <td class="text-end">
                       @if (g.calificacionObtenida !== null) {
@@ -176,6 +187,17 @@
                       </button>
                     </td>
                   </tr>
+                  <!-- Sub-fila expandible con los temas del corte -->
+                  @if (isTopicsOpen(g) && g.temas && g.temas.length) {
+                    <tr class="topics-row">
+                      <td colspan="4">
+                        <div class="small text-muted mb-1">Temas evaluados en este corte:</div>
+                        @for (t of g.temas; track $index) {
+                          <span class="badge rounded-pill topic-chip me-1 mb-1">{{ t }}</span>
+                        }
+                      </td>
+                    </tr>
+                  }
                 }
               }
               @if (grades().length === 0) {
