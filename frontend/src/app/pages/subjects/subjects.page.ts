@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { SubjectsService } from '../../services/subjects.service';
 import { GradesService } from '../../services/grades.service';
+import { extractHttpErrorMessage } from '../../utils/http-error';
 import {
   CreateGrade,
   CreateSubject,
@@ -74,7 +75,8 @@ export class SubjectsPage implements OnInit {
         this.subjects.update((list) => [s, ...list]);
         this.newSubject = { nombre: '', codigo: '', creditos: 3, semestre: '' };
       },
-      error: () => this.error.set('No se pudo crear la materia.'),
+      error: (err) =>
+        this.error.set(extractHttpErrorMessage(err, 'No se pudo crear la materia.')),
     });
   }
 
@@ -109,19 +111,46 @@ export class SubjectsPage implements OnInit {
   addGrade(): void {
     const materia = this.selected();
     if (!materia || !this.newGrade.nombreCorte.trim()) return;
-    const dto: CreateGrade = { materiaId: materia.id, ...this.newGrade };
+
+    // Guarda defensiva: sin id de materia, la petición fallaría con
+    // "materiaId must be a UUID". Avisamos con un mensaje claro.
+    if (!materia.id) {
+      this.error.set(
+        'La materia seleccionada no tiene un identificador válido. Recarga la página e inténtalo de nuevo.',
+      );
+      return;
+    }
+
+    // Normaliza los valores del formulario (los inputs numéricos pueden
+    // llegar como string o vacío) para no romper la validación del backend.
+    const dto: CreateGrade = {
+      materiaId: materia.id,
+      nombreCorte: this.newGrade.nombreCorte.trim(),
+      porcentaje: Number(this.newGrade.porcentaje) || 0,
+      calificacionObtenida:
+        this.newGrade.calificacionObtenida === null ||
+        (this.newGrade.calificacionObtenida as unknown as string) === ''
+          ? null
+          : Number(this.newGrade.calificacionObtenida),
+    };
+
     this.gradesService.create(dto).subscribe({
       next: (g) => {
         this.grades.update((list) => [...list, g]);
         this.newGrade = { nombreCorte: '', porcentaje: 0, calificacionObtenida: null };
+        this.error.set(null);
       },
-      error: () => this.error.set('No se pudo agregar el corte.'),
+      // Muestra el mensaje REAL de NestJS (class-validator o BD).
+      error: (err) =>
+        this.error.set(extractHttpErrorMessage(err, 'No se pudo agregar el corte.')),
     });
   }
 
   deleteGrade(g: Grade): void {
     this.gradesService.remove(g.id).subscribe({
       next: () => this.grades.update((list) => list.filter((x) => x.id !== g.id)),
+      error: (err) =>
+        this.error.set(extractHttpErrorMessage(err, 'No se pudo eliminar el corte.')),
     });
   }
 
@@ -171,9 +200,11 @@ export class SubjectsPage implements OnInit {
         // Si había una simulación, la recalculamos con los nuevos valores.
         if (this.simulation()) this.runSimulation();
       },
-      error: () => {
+      error: (err) => {
         this.savingEdit.set(false);
-        this.error.set('No se pudo actualizar el corte.');
+        this.error.set(
+          extractHttpErrorMessage(err, 'No se pudo actualizar el corte.'),
+        );
       },
     });
   }
@@ -187,8 +218,10 @@ export class SubjectsPage implements OnInit {
       next: (res) => this.simulation.set(res),
       error: (err) =>
         this.error.set(
-          err?.error?.message ??
+          extractHttpErrorMessage(
+            err,
             'No se pudo simular (revisa que los porcentajes sumen 100%).',
+          ),
         ),
     });
   }
