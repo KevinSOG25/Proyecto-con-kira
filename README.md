@@ -18,6 +18,13 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - [x] **Frontend** — Angular + Bootstrap + RxJS (Dashboard de Materias, Tareas/Calendario, Centro de IA, auth Google)
 - [x] **Dashboard estadístico** — Promedio ponderado semestral + gráfico de notas (chart.js/ng2-charts)
 - [x] **Resiliencia IA** — Exponential Backoff (503/429) en las llamadas a Gemini
+- [x] **Importar syllabus → Materia** — botón "Crear Materia Automáticamente" (`POST /subjects/import`, transaccional)
+- [x] **Semáforo de riesgo** — `riskLevel` (SAFE/WARNING/DANGER) por materia en el Dashboard
+
+## Importación de syllabus y semáforo de riesgo
+
+- **Importar syllabus:** en el Centro de IA, tras analizar un syllabus, el botón **"Crear Materia Automáticamente"** envía materia + código + cortes a `POST /subjects/import`, que crea el `Subject` (3 créditos por defecto si no vienen) y todos sus `Grade` en una **transacción**. Requiere sesión de Google activa.
+- **Semáforo de riesgo:** `GET /analytics/dashboard` añade por materia `notaAcumulada`, `porcentajeRestante`, `notaNecesaria` (para alcanzar 3.0) y **`riskLevel`**: `DANGER` si la nota necesaria > 5.0 (imposible), `WARNING` si está entre 4.0 y 5.0, `SAFE` si < 4.0. El Dashboard muestra tarjetas con color/ícono e indica la nota exacta requerida en lo que queda del semestre.
 
 ## Dashboard estadístico y resiliencia IA
 

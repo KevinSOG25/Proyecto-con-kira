@@ -120,4 +120,35 @@ export class DashboardPage implements OnInit {
   hasChartData(): boolean {
     return (this.barChartData().labels?.length ?? 0) > 0;
   }
+
+  // ---- Semáforo de riesgo ----
+
+  /** Clase CSS de la tarjeta según el nivel de riesgo. */
+  riskCardClass(level: 'SAFE' | 'WARNING' | 'DANGER'): string {
+    return `risk-${level.toLowerCase()}`;
+  }
+
+  /** Ícono del semáforo. */
+  riskIcon(level: 'SAFE' | 'WARNING' | 'DANGER'): string {
+    switch (level) {
+      case 'DANGER':
+        return '🛑';
+      case 'WARNING':
+        return '⚠️';
+      default:
+        return '✅';
+    }
+  }
+
+  /** Etiqueta corta del estado. */
+  riskLabel(level: 'SAFE' | 'WARNING' | 'DANGER'): string {
+    switch (level) {
+      case 'DANGER':
+        return 'En riesgo de perder';
+      case 'WARNING':
+        return 'Riesgo medio';
+      default:
+        return 'Vas bien';
+    }
+  }
 }
