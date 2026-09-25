@@ -20,6 +20,12 @@ Aplicación de gestión académica personal con IA, optimizada para Google Cloud
 - [x] **Resiliencia IA** — Exponential Backoff (503/429) en las llamadas a Gemini
 - [x] **Importar syllabus → Materia** — botón "Crear Materia Automáticamente" (`POST /subjects/import`, transaccional)
 - [x] **Semáforo de riesgo** — `riskLevel` (SAFE/WARNING/DANGER) por materia en el Dashboard
+- [x] **Fix import** — semestre por defecto en materias importadas + mensajes de error reales al gestionar cortes
+
+## Fix: cortes en materias importadas
+
+- `POST /subjects/import` ahora asigna el **semestre actual** (formato `AÑO-N`, p. ej. `2026-2`) cuando la IA no lo detecta, evitando el estado incompleto ("s/sem"). Sigue retornando el `Subject` completo (con `id` y sus cortes).
+- El frontend, al agregar/editar/eliminar cortes y al importar, muestra el **mensaje real de NestJS** (`extractHttpErrorMessage`: soporta arreglos de `class-validator`, errores de BD y de red) en lugar de un texto genérico. Se normalizan los valores numéricos del formulario y se valida el `id` de la materia antes de enviar.
 
 ## Importación de syllabus y semáforo de riesgo
 

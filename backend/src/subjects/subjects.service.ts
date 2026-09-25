@@ -15,6 +15,16 @@ import { ImportSubjectDto } from './dto/import-subject.dto';
 /** Créditos por defecto si el syllabus no los menciona. */
 const DEFAULT_CREDITOS = 3;
 
+/**
+ * Calcula el semestre académico actual en formato "AÑO-N".
+ * Convención: enero–junio => periodo 1; julio–diciembre => periodo 2.
+ */
+function getCurrentSemester(date = new Date()): string {
+  const year = date.getFullYear();
+  const period = date.getMonth() < 6 ? 1 : 2; // getMonth: 0-11
+  return `${year}-${period}`;
+}
+
 @Injectable()
 export class SubjectsService {
   constructor(
@@ -83,7 +93,9 @@ export class SubjectsService {
         nombre: dto.materia,
         codigo: dto.codigo ?? undefined,
         creditos: dto.creditos ?? DEFAULT_CREDITOS,
-        semestre: dto.semestre ?? undefined,
+        // Si la IA no detecta semestre, se asigna el semestre actual
+        // para que la entidad quede completa (evita "s/sem" y validaciones futuras).
+        semestre: dto.semestre?.trim() || getCurrentSemester(),
       });
       const savedSubject = await manager.save(subject);
 

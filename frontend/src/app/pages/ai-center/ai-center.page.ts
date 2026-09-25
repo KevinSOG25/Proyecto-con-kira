@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 import { AiService } from '../../services/ai.service';
 import { SubjectsService } from '../../services/subjects.service';
 import { SlidesAnalysis, SyllabusAnalysis } from '../../models/api.models';
+import { extractHttpErrorMessage } from '../../utils/http-error';
 
 @Component({
   selector: 'app-ai-center-page',
@@ -95,8 +96,10 @@ export class AiCenterPage {
         next: (subject) => this.importedSubjectName.set(subject.nombre),
         error: (err) =>
           this.importError.set(
-            err?.error?.message ??
+            extractHttpErrorMessage(
+              err,
               'No se pudo crear la materia. Verifica tu sesión de Google.',
+            ),
           ),
       });
   }
