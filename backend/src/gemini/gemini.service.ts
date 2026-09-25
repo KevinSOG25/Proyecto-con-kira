@@ -15,15 +15,20 @@ import {
 
 /** Códigos HTTP que justifican reintento con backoff. */
 const RETRYABLE_STATUS = new Set([429, 503]);
-/** Número máximo de reintentos (además del intento inicial). */
+/** Número máximo de reintentos (además del intento inicial) para el modelo principal. */
 const MAX_RETRIES = 3;
+/** Reintentos (además del intento inicial) para el modelo de respaldo. */
+const FALLBACK_MAX_RETRIES = 1;
 /** Retardo base en ms; crece exponencialmente: 2s, 4s, 8s. */
 const BASE_DELAY_MS = 2000;
 
 /**
  * Envoltura del SDK oficial de Google GenAI (@google/genai) usando el
- * modelo Gemini 3.8 Flash (stable vigente de la familia 3). Incluye
- * Exponential Backoff ante errores transitorios 503/429. Centraliza:
+ * modelo Gemini 3.8 Flash (stable vigente de la familia 3). Incluye:
+ *  - Exponential Backoff ante errores transitorios 503/429.
+ *  - Fallback Model: si el modelo principal agota reintentos por saturación,
+ *    reintenta la petición con un modelo de respaldo antes de fallar.
+ * Centraliza:
  *  - generación de texto libre,
  *  - generación con salida JSON forzada (responseMimeType + responseSchema),
  *  - entrada multimodal (PDF inline en base64).
@@ -33,6 +38,7 @@ export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private readonly client: GoogleGenAI;
   private readonly model: string;
+  private readonly fallbackModel: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('GEMINI_API_KEY');
@@ -47,12 +53,24 @@ export class GeminiService {
     // El SDK @google/genai ya añade el prefijo "models/" internamente; por eso
     // NUNCA debe incluirse en el string. Si por configuración llega con el
     // prefijo, lo removemos para evitar el 404 "models/models/... not found".
-    const configured = this.config.get<string>(
-      'GEMINI_MODEL',
-      'gemini-3.8-flash',
+    this.model = this.sanitizeModel(
+      this.config.get<string>('GEMINI_MODEL', 'gemini-3.8-flash'),
     );
-    this.model = configured.replace(/^models\//i, '').trim();
-    this.logger.log(`Modelo Gemini configurado: ${this.model}`);
+
+    // Modelo de respaldo, usado si el principal se satura (503/429) tras
+    // agotar sus reintentos. Por defecto 'gemini-3.5-flash'.
+    this.fallbackModel = this.sanitizeModel(
+      this.config.get<string>('FALLBACK_GEMINI_MODEL', 'gemini-3.5-flash'),
+    );
+
+    this.logger.log(
+      `Modelo Gemini principal: ${this.model} · respaldo: ${this.fallbackModel}`,
+    );
+  }
+
+  /** Quita el prefijo "models/" (el SDK lo añade) y espacios sobrantes. */
+  private sanitizeModel(value: string): string {
+    return value.replace(/^models\//i, '').trim();
   }
 
   /**
@@ -69,8 +87,7 @@ export class GeminiService {
     schema: Schema,
   ): Promise<T> {
     try {
-      const response = await this.generateWithRetry({
-        model: this.model,
+      const response = await this.generateWithFallback({
         contents: [{ role: 'user', parts }],
         config: {
           systemInstruction,
@@ -96,8 +113,7 @@ export class GeminiService {
     parts: Part[],
   ): Promise<string> {
     try {
-      const response = await this.generateWithRetry({
-        model: this.model,
+      const response = await this.generateWithFallback({
         contents: [{ role: 'user', parts }],
         config: { systemInstruction, temperature: 0.3 },
       });
@@ -108,17 +124,77 @@ export class GeminiService {
   }
 
   /**
-   * Llama a generateContent aplicando Exponential Backoff:
-   * ante un 503 (UNAVAILABLE) o 429 (RESOURCE_EXHAUSTED), espera
-   * 2s, 4s, 8s y reintenta hasta MAX_RETRIES veces. Cualquier otro
-   * error se propaga de inmediato (no se reintenta).
+   * Orquesta el patrón Fallback Model:
+   *  1. Ejecuta con el modelo PRINCIPAL aplicando Exponential Backoff.
+   *  2. Si se agotan los reintentos por un error transitorio (503/429),
+   *     reintenta con el modelo de RESPALDO (con un backoff simple).
+   *  3. Solo si el respaldo también falla, se propaga el error (que
+   *     luego se traduce a ServiceUnavailableException para el frontend).
+   *
+   * Errores NO transitorios del modelo principal se propagan de inmediato
+   * (no tiene sentido cambiar de modelo ante, p. ej., un 400 o 404).
    */
-  private async generateWithRetry(
+  private async generateWithFallback(
+    baseParams: Omit<GenerateContentParameters, 'model'>,
+  ): Promise<GenerateContentResponse> {
+    try {
+      return await this.attemptWithRetry(
+        { ...baseParams, model: this.model },
+        this.model,
+        MAX_RETRIES,
+      );
+    } catch (primaryErr: unknown) {
+      const status = this.extractStatus(primaryErr);
+
+      // Si el fallo no es por saturación, o no hay un respaldo distinto
+      // configurado, no intentamos el plan B.
+      const canFallback =
+        RETRYABLE_STATUS.has(status) &&
+        !!this.fallbackModel &&
+        this.fallbackModel !== this.model;
+
+      if (!canFallback) {
+        throw primaryErr;
+      }
+
+      this.logger.warn(
+        `El modelo principal (${this.model}) agotó reintentos con ${status}. ` +
+          `Ejecutando plan B con el modelo de respaldo (${this.fallbackModel})…`,
+      );
+
+      try {
+        const response = await this.attemptWithRetry(
+          { ...baseParams, model: this.fallbackModel },
+          this.fallbackModel,
+          FALLBACK_MAX_RETRIES,
+        );
+        this.logger.log(
+          `El modelo de respaldo (${this.fallbackModel}) respondió correctamente.`,
+        );
+        return response;
+      } catch (fallbackErr: unknown) {
+        this.logger.error(
+          `El modelo de respaldo (${this.fallbackModel}) también falló ` +
+            `(${this.extractStatus(fallbackErr)}). Se propaga el error.`,
+        );
+        throw fallbackErr;
+      }
+    }
+  }
+
+  /**
+   * Llama a generateContent con un modelo concreto aplicando Exponential
+   * Backoff: ante un 503/429 espera 2s, 4s, 8s… y reintecta hasta
+   * `maxRetries` veces. Cualquier otro error se propaga de inmediato.
+   */
+  private async attemptWithRetry(
     params: GenerateContentParameters,
+    model: string,
+    maxRetries: number,
   ): Promise<GenerateContentResponse> {
     let lastError: unknown;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await this.client.models.generateContent(params);
       } catch (err: unknown) {
@@ -126,13 +202,13 @@ export class GeminiService {
         const status = this.extractStatus(err);
 
         // No reintentar si el error no es transitorio o si ya agotamos intentos.
-        if (!RETRYABLE_STATUS.has(status) || attempt === MAX_RETRIES) {
+        if (!RETRYABLE_STATUS.has(status) || attempt === maxRetries) {
           throw err;
         }
 
         const delay = BASE_DELAY_MS * 2 ** attempt; // 2000, 4000, 8000
         this.logger.warn(
-          `Gemini respondió ${status}. Reintento ${attempt + 1}/${MAX_RETRIES} en ${delay} ms…`,
+          `Modelo ${model} respondió ${status}. Reintento ${attempt + 1}/${maxRetries} en ${delay} ms…`,
         );
         await this.sleep(delay);
       }
