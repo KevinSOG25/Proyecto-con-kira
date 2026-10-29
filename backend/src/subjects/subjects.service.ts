@@ -108,6 +108,7 @@ export class SubjectsService {
             porcentaje: c.porcentaje ?? 0,
             calificacionObtenida: null,
             temas: c.temas ?? [],
+            fecha: c.fecha ?? null,
           }),
         );
 

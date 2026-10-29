@@ -35,4 +35,9 @@ export class CreateGradeDto {
   @IsArray()
   @IsString({ each: true })
   temas?: string[];
+
+  /** Fecha programada del corte (ISO YYYY-MM-DD). */
+  @IsOptional()
+  @IsString()
+  fecha?: string | null;
 }

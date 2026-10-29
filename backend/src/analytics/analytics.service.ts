@@ -15,8 +15,13 @@ export interface SubjectGrade {
   creditos: number;
   /** Nota final (0-5): suma del aporte de los cortes evaluados. */
   notaFinal: number;
-  /** Nota acumulada actual = aporte de los cortes ya evaluados (0-5). */
+  /** Nota acumulada neta = aporte de los cortes ya evaluados (0-5). */
   notaAcumulada: number;
+  /**
+   * Nota actual relativa a lo evaluado: notaAcumulada / (%evaluado/100).
+   * Es la nota que llevas "sobre lo visto". null si no hay cortes evaluados.
+   */
+  notaActualRelativa: number | null;
   /** % de la materia ya evaluado. */
   porcentajeEvaluado: number;
   /** % de la materia aún por evaluar. */
@@ -32,12 +37,40 @@ export interface SubjectGrade {
   completa: boolean;
 }
 
+/** Evaluación próxima con fecha programada. */
+export interface UpcomingEvaluation {
+  gradeId: string;
+  materiaId: string;
+  materia: string;
+  codigo: string | null;
+  nombreCorte: string;
+  porcentaje: number;
+  fecha: string;
+  /** Días que faltan para la fecha (0 = hoy, negativos quedan excluidos). */
+  diasRestantes: number;
+  temas: string[];
+}
+
 export interface DashboardAnalytics {
-  /** Promedio Ponderado Semestral = Σ(notaFinal * créditos) / Σ créditos. */
+  /**
+   * Promedio ponderado ACTUAL del semestre, usando la nota relativa a lo
+   * evaluado de cada materia, ponderada por créditos (valor principal).
+   */
+  promedioPonderadoActual: number;
+  /**
+   * Promedio ponderado ACUMULADO NETO (dato secundario): usa la nota neta,
+   * que asume 0.0 en lo aún no evaluado.
+   */
+  promedioAcumuladoNeto: number;
+  /**
+   * Alias retrocompatible del acumulado neto (lo que devolvía antes el campo
+   * promedioPonderadoSemestral).
+   */
   promedioPonderadoSemestral: number;
   totalCreditos: number;
   totalMaterias: number;
   materias: SubjectGrade[];
+  proximasEvaluaciones: UpcomingEvaluation[];
 }
 
 @Injectable()
@@ -60,11 +93,6 @@ export class AnalyticsService {
    *
    * Modelo: notaFinal = notaAcumulada + notaNecesaria * (%restante / 100)
    *   => notaNecesaria = (3.0 - notaAcumulada) / (%restante / 100)
-   *
-   * riskLevel:
-   *  - DANGER : notaNecesaria > 5.0 (matemáticamente imposible aprobar).
-   *  - WARNING: notaNecesaria entre 4.0 y 5.0 (exige rendimiento alto).
-   *  - SAFE   : notaNecesaria < 4.0 (incluye objetivo ya asegurado).
    */
   private calcularRiesgo(
     notaAcumulada: number,
@@ -72,7 +100,6 @@ export class AnalyticsService {
   ): { notaNecesaria: number | null; riskLevel: RiskLevel } {
     const APROBATORIA = 3.0;
 
-    // No queda nada por evaluar: el resultado ya está definido.
     if (porcentajeRestante <= 0) {
       return {
         notaNecesaria: null,
@@ -96,17 +123,22 @@ export class AnalyticsService {
     return { notaNecesaria, riskLevel };
   }
 
-  /**
-   * Calcula el dashboard estadístico:
-   *  - nota final por materia (aporte ponderado de sus cortes evaluados),
-   *  - promedio ponderado semestral por créditos.
-   */
+  /** Días (enteros) entre hoy y una fecha ISO (YYYY-MM-DD). */
+  private diffDays(fechaIso: string): number {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const target = new Date(`${fechaIso}T00:00:00`);
+    const ms = target.getTime() - hoy.getTime();
+    return Math.round(ms / 86_400_000);
+  }
+
   async getDashboard(): Promise<DashboardAnalytics> {
     const subjects = await this.subjectsRepo.find({
       order: { createdAt: 'ASC' },
     });
 
     const materias: SubjectGrade[] = [];
+    const proximasEvaluaciones: UpcomingEvaluation[] = [];
 
     for (const subject of subjects) {
       const grades = await this.gradesRepo.find({
@@ -125,12 +157,34 @@ export class AnalyticsService {
           notaFinal += nota * (peso / 100);
           porcentajeEvaluado += peso;
         }
+
+        // Próximas evaluaciones: cortes con fecha futura (o de hoy) sin calificar.
+        if (g.fecha && nota === null) {
+          const dias = this.diffDays(g.fecha);
+          if (dias >= 0) {
+            proximasEvaluaciones.push({
+              gradeId: g.id,
+              materiaId: subject.id,
+              materia: subject.nombre,
+              codigo: subject.codigo ?? null,
+              nombreCorte: g.nombreCorte,
+              porcentaje: peso,
+              fecha: g.fecha,
+              diasRestantes: dias,
+              temas: g.temas ?? [],
+            });
+          }
+        }
       }
 
-      // Base para el % restante: si los cortes suman 100 usamos lo pendiente;
-      // si no llegan a 100, consideramos el resto hasta 100 como pendiente.
       const notaAcumulada = Number(notaFinal.toFixed(2));
       const porcentajeRestante = Math.max(0, 100 - porcentajeEvaluado);
+
+      // Nota relativa a lo evaluado (lo que llevas "sobre lo visto").
+      const notaActualRelativa =
+        porcentajeEvaluado > 0
+          ? Number((notaAcumulada / (porcentajeEvaluado / 100)).toFixed(2))
+          : null;
 
       const { notaNecesaria, riskLevel } = this.calcularRiesgo(
         notaAcumulada,
@@ -144,6 +198,7 @@ export class AnalyticsService {
         creditos: this.toNumber(subject.creditos) ?? 0,
         notaFinal: notaAcumulada,
         notaAcumulada,
+        notaActualRelativa,
         porcentajeEvaluado,
         porcentajeRestante,
         notaNecesaria,
@@ -152,25 +207,34 @@ export class AnalyticsService {
       });
     }
 
-    // Promedio ponderado semestral: Σ(notaFinal * créditos) / Σ créditos.
-    // Solo se consideran materias con al menos un corte evaluado.
-    let sumaPonderada = 0;
+    // Promedios ponderados por créditos, solo materias con algo evaluado.
+    let sumaRelativa = 0;
+    let sumaNeta = 0;
     let sumaCreditos = 0;
     for (const m of materias) {
       if (m.porcentajeEvaluado > 0 && m.creditos > 0) {
-        sumaPonderada += m.notaFinal * m.creditos;
+        sumaRelativa += (m.notaActualRelativa ?? 0) * m.creditos;
+        sumaNeta += m.notaAcumulada * m.creditos;
         sumaCreditos += m.creditos;
       }
     }
 
-    const promedio =
-      sumaCreditos > 0 ? Number((sumaPonderada / sumaCreditos).toFixed(2)) : 0;
+    const promedioPonderadoActual =
+      sumaCreditos > 0 ? Number((sumaRelativa / sumaCreditos).toFixed(2)) : 0;
+    const promedioAcumuladoNeto =
+      sumaCreditos > 0 ? Number((sumaNeta / sumaCreditos).toFixed(2)) : 0;
+
+    // Ordenar próximas evaluaciones de la más cercana a la más lejana.
+    proximasEvaluaciones.sort((a, b) => a.diasRestantes - b.diasRestantes);
 
     return {
-      promedioPonderadoSemestral: promedio,
+      promedioPonderadoActual,
+      promedioAcumuladoNeto,
+      promedioPonderadoSemestral: promedioAcumuladoNeto, // alias retrocompatible
       totalCreditos: sumaCreditos,
       totalMaterias: materias.length,
       materias,
+      proximasEvaluaciones,
     };
   }
 }

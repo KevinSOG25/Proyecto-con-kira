@@ -6,6 +6,7 @@ import { Task } from '../tasks/entities/task.entity';
 import { Grade } from '../grades/entities/grade.entity';
 import { UserTokens } from '../auth/entities/user-tokens.entity';
 import { WeeklyPlan } from '../weekly-plans/entities/weekly-plan.entity';
+import { CurriculumItem } from '../curriculum/entities/curriculum-item.entity';
 
 loadEnv();
 
@@ -24,7 +25,7 @@ export default new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   extra: isCloudSqlSocket ? { socketPath: host } : undefined,
-  entities: [Subject, Task, Grade, UserTokens, WeeklyPlan],
+  entities: [Subject, Task, Grade, UserTokens, WeeklyPlan, CurriculumItem],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 });

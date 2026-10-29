@@ -147,6 +147,7 @@ export interface SubjectGrade {
   creditos: number;
   notaFinal: number;
   notaAcumulada: number;
+  notaActualRelativa: number | null;
   porcentajeEvaluado: number;
   porcentajeRestante: number;
   notaNecesaria: number | null;
@@ -154,12 +155,59 @@ export interface SubjectGrade {
   completa: boolean;
 }
 
+export interface UpcomingEvaluation {
+  gradeId: string;
+  materiaId: string;
+  materia: string;
+  codigo: string | null;
+  nombreCorte: string;
+  porcentaje: number;
+  fecha: string;
+  diasRestantes: number;
+  temas: string[];
+}
+
 export interface DashboardAnalytics {
+  promedioPonderadoActual: number;
+  promedioAcumuladoNeto: number;
   promedioPonderadoSemestral: number;
   totalCreditos: number;
   totalMaterias: number;
   materias: SubjectGrade[];
+  proximasEvaluaciones: UpcomingEvaluation[];
 }
+
+/** ---- Pensum (malla curricular) ---- */
+export type CurriculumStatus = 'pendiente' | 'en_curso' | 'aprobada';
+
+export interface CurriculumItem {
+  id: string;
+  codigo: string;
+  nombre: string;
+  creditos: number;
+  semestre: number;
+  area: string;
+  prerrequisitos: string[];
+  orden: number;
+}
+
+export interface CurriculumResponse {
+  items: CurriculumItem[];
+  creditosPorSemestre: Record<number, number>;
+  equivalencias: Record<string, string>;
+}
+
+export interface CreateCurriculumItem {
+  codigo: string;
+  nombre: string;
+  creditos: number;
+  semestre: number;
+  area: string;
+  prerrequisitos?: string[];
+  orden?: number;
+}
+
+export type UpdateCurriculumItem = Partial<Omit<CreateCurriculumItem, 'orden'>>;
 
 /** ---- Importación de syllabus ---- */
 export interface ImportSubjectPayload {

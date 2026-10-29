@@ -69,6 +69,7 @@ export class GradesService {
       porcentaje: dto.porcentaje,
       calificacionObtenida: dto.calificacionObtenida ?? null,
       temas: dto.temas ?? [],
+      fecha: dto.fecha ?? null,
     });
     return this.gradesRepo.save(grade);
   }
