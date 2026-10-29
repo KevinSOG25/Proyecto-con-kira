@@ -37,9 +37,9 @@
             data-bs-toggle="collapse"
             [attr.data-bs-target]="'#week' + week.weekNumber"
           >
-            <span class="week-badge">{{ week.weekNumber }}</span>
+            <span class="week-badge tabular-nums">{{ week.weekNumber }}</span>
             Semana {{ week.weekNumber }}
-            @if (week.content.trim()) {
+            @if (weekHasContent(week)) {
               <span class="badge rounded-pill bg-accent-soft ms-2">con notas</span>
             }
           </button>
@@ -50,13 +50,99 @@
           data-bs-parent="#weeksAccordion"
         >
           <div class="accordion-body">
-            <textarea
-              class="form-control planning-textarea"
-              rows="5"
-              placeholder="Escribe aquí la planeación, temas, lecturas o tareas de esta semana…"
-              [(ngModel)]="week.content"
-            ></textarea>
-            <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+            <!-- Switch de modo -->
+            <div class="d-flex justify-content-end mb-3">
+              <div class="mode-switch" role="group" aria-label="Modo de edición">
+                <button
+                  type="button"
+                  class="mode-btn"
+                  [class.active]="week.mode === 'guided'"
+                  (click)="week.mode !== 'guided' && toggleMode(week)"
+                >
+                  Lista guiada
+                </button>
+                <button
+                  type="button"
+                  class="mode-btn"
+                  [class.active]="week.mode === 'raw'"
+                  (click)="week.mode !== 'raw' && toggleMode(week)"
+                >
+                  Texto clásico
+                </button>
+              </div>
+            </div>
+
+            @if (week.mode === 'guided') {
+              <!-- Lista guiada por materia -->
+              @if (subjects().length === 0) {
+                <p class="text-muted small">
+                  No hay materias matriculadas. Agrega materias para planear por asignatura,
+                  o usa el modo "Texto clásico".
+                </p>
+              } @else {
+                <div class="subject-plan-list">
+                  @for (plan of week.subjectPlans; track plan.subjectId) {
+                    <div class="subject-plan-card" [attr.data-status]="plan.estado">
+                      <div class="subject-plan-head">
+                        <span class="subject-accent"></span>
+                        <span class="subject-name">{{ plan.nombre }}</span>
+                        <span class="status-badge" [attr.data-status]="plan.estado">
+                          {{ statusLabel(plan.estado) }}
+                        </span>
+                      </div>
+
+                      <input
+                        class="form-control form-control-sm mt-2"
+                        placeholder="Entregable o meta de la semana…"
+                        [(ngModel)]="plan.tarea"
+                      />
+
+                      <div class="subject-plan-foot">
+                        <select
+                          class="form-select form-select-sm status-select"
+                          [(ngModel)]="plan.estado"
+                        >
+                          @for (s of statusOptions; track s) {
+                            <option [value]="s">{{ statusLabel(s) }}</option>
+                          }
+                        </select>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-secondary"
+                          (click)="markNoPending(plan)"
+                        >
+                          Sin pendientes
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Notas generales -->
+              <div class="general-notes mt-3">
+                <label class="form-label small mb-1">📝 Notas generales de la semana</label>
+                <textarea
+                  class="form-control"
+                  rows="3"
+                  placeholder="Recordatorios o rutinas personales no atadas a una materia…"
+                  [(ngModel)]="week.generalNotes"
+                ></textarea>
+              </div>
+            } @else {
+              <!-- Texto clásico (edición libre sin procesar) -->
+              <textarea
+                class="form-control planning-textarea"
+                rows="7"
+                placeholder="Escribe aquí la planeación en texto libre…"
+                [(ngModel)]="week.content"
+              ></textarea>
+              <p class="text-muted small mt-1 mb-0">
+                Formato compatible: una línea por materia como <code>Materia = Tarea</code>.
+              </p>
+            }
+
+            <div class="d-flex justify-content-end align-items-center gap-2 mt-3">
               @if (week.saved) {
                 <span class="text-success small">✔ Guardado</span>
               }

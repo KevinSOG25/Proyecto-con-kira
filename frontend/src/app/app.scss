@@ -1,19 +1,35 @@
+.brand-mark {
+  font-size: 1.15rem;
+}
+
 .auth-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  gap: 0.5rem;
+  background: var(--as-surface-sunken);
+  border: 1px solid var(--as-border);
+  color: var(--as-text);
   font-size: 0.8rem;
-  font-weight: 500;
-  padding: 0.35rem 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem 0.25rem 0.3rem;
   border-radius: 999px;
+  max-width: 220px;
 }
 
-.auth-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25);
+.auth-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--as-gradient);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.auth-email {
+  max-width: 150px;
 }

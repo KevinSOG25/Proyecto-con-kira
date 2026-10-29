@@ -53,3 +53,122 @@
   border-radius: var(--as-radius-sm);
   resize: vertical;
 }
+
+/* ---------- Switch de modo ---------- */
+.mode-switch {
+  display: inline-flex;
+  background: var(--as-surface-sunken);
+  border: 1px solid var(--as-border);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--as-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mode-btn.active {
+  background: var(--as-surface);
+  color: var(--as-accent-strong);
+  box-shadow: var(--as-shadow-xs);
+}
+
+/* ---------- Lista guiada por materia ---------- */
+.subject-plan-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.subject-plan-card {
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  background: var(--as-surface);
+  padding: 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.subject-plan-card:hover {
+  box-shadow: var(--as-shadow-xs);
+}
+
+.subject-plan-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.subject-accent {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--as-gradient);
+  flex-shrink: 0;
+}
+
+.subject-name {
+  font-weight: 700;
+  color: var(--as-text);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subject-plan-foot {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.status-select {
+  flex: 1 1 auto;
+}
+
+/* ---------- Badges de estado (colores sutiles) ---------- */
+.status-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+.status-badge[data-status='libre'] {
+  background: var(--as-surface-sunken);
+  color: var(--as-text-muted);
+}
+.status-badge[data-status='en_progreso'] {
+  background: #eff6ff;
+  color: #1e40af;
+}
+.status-badge[data-status='prioritario'] {
+  background: var(--as-warning-soft);
+  color: #92600a;
+}
+.status-badge[data-status='completado'] {
+  background: var(--as-success-soft);
+  color: #065f46;
+}
+
+/* Acento izquierdo de la tarjeta según estado */
+.subject-plan-card[data-status='prioritario'] {
+  border-left: 3px solid var(--as-warning);
+}
+.subject-plan-card[data-status='completado'] {
+  border-left: 3px solid var(--as-success);
+}
+.subject-plan-card[data-status='en_progreso'] {
+  border-left: 3px solid var(--as-info);
+}
+
+.general-notes textarea {
+  resize: vertical;
+}
