@@ -23,6 +23,11 @@ export const routes: Routes = [
       import('./pages/planning/planning.page').then((m) => m.PlanningPage),
   },
   {
+    path: 'pensum',
+    loadComponent: () =>
+      import('./pages/pensum/pensum.page').then((m) => m.PensumPage),
+  },
+  {
     path: 'ia',
     loadComponent: () =>
       import('./pages/ai-center/ai-center.page').then((m) => m.AiCenterPage),

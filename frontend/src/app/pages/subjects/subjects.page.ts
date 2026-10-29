@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { SubjectsService } from '../../services/subjects.service';
 import { GradesService } from '../../services/grades.service';
+import { SubjectSelectionService } from '../../services/subject-selection.service';
 import { extractHttpErrorMessage } from '../../utils/http-error';
 import {
   CreateGrade,
@@ -22,6 +23,7 @@ import {
 export class SubjectsPage implements OnInit {
   private subjectsService = inject(SubjectsService);
   private gradesService = inject(GradesService);
+  private subjectSelection = inject(SubjectSelectionService);
 
   subjects = signal<Subject[]>([]);
   loading = signal(false);
@@ -75,7 +77,15 @@ export class SubjectsPage implements OnInit {
       .findAll()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: (data) => this.subjects.set(data),
+        next: (data) => {
+          this.subjects.set(data);
+          // Si venimos del Dashboard con una materia pendiente, la seleccionamos.
+          const pendingId = this.subjectSelection.consume();
+          if (pendingId) {
+            const match = data.find((s) => s.id === pendingId);
+            if (match) this.select(match);
+          }
+        },
         error: () => this.error.set('No se pudieron cargar las materias.'),
       });
   }

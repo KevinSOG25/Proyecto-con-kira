@@ -1,0 +1,206 @@
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <div>
+    <h2 class="page-title mb-1">Pensum</h2>
+    <p class="text-muted mb-0">Malla curricular — Ingeniería de Sistemas y Computación.</p>
+  </div>
+  <button class="btn btn-outline-primary btn-sm" (click)="restore()" [disabled]="restoring()">
+    @if (restoring()) {
+      <span class="spinner-border spinner-border-sm me-1"></span> Restaurando…
+    } @else {
+      ↺ Restaurar pensum original
+    }
+  </button>
+</div>
+
+@if (error()) {
+  <div class="alert alert-warning">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Cargando malla…</p>
+  </div>
+} @else {
+  <div class="pensum-grid">
+    @for (sem of semestres; track sem) {
+      <div class="pensum-col">
+        <div class="pensum-col-head">
+          <span class="sem-num tabular-nums">Semestre {{ sem }}</span>
+          <span class="sem-cred tabular-nums">{{ creditosSemestre(sem) }} cr</span>
+        </div>
+
+        @for (item of itemsBySemestre(sem); track item.id) {
+          <button
+            type="button"
+            class="pensum-card"
+            [class]="areaClass(item.area)"
+            [attr.data-status]="statusOf(item)"
+            (click)="openDetail(item)"
+          >
+            <div class="pensum-card-top">
+              <span class="pensum-code tabular-nums">{{ item.codigo }}</span>
+              <span class="pensum-cred tabular-nums">{{ item.creditos }} cr</span>
+            </div>
+            <div class="pensum-name">{{ item.nombre }}</div>
+            <div class="pensum-card-foot">
+              <span class="status-dot" [attr.data-status]="statusOf(item)"></span>
+              <span class="status-text">{{ statusLabel(statusOf(item)) }}</span>
+              <span class="prereq-pill">{{ prereqCountLabel(item) }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Banner de reglas generales -->
+  <div class="card rules-card mt-4">
+    <div class="card-body">
+      <h6 class="fw-bold mb-2">📋 Reglas generales del programa</h6>
+      <ol class="rules-list mb-0">
+        <li>Todas las materias <code>ISIS-XXXX</code> de los semestres 6, 7 y 8 requieren Lectura en Inglés (<code>RLEC</code>).</li>
+        <li>Para inscribir Proyecto de Grado (<code>ISIS-3007</code>) se deben haber aprobado todas las materias de nivel 1 y 2 (<code>XXXX-1YYY</code> y <code>XXXX-2YYY</code>).</li>
+        <li>Las materias de nivel 4 tienen como prerrequisito <code>ISIS-2011</code> o <code>ISIS-2007</code>.</li>
+      </ol>
+    </div>
+  </div>
+}
+
+<!-- Drawer de detalle / edición -->
+@if (selected(); as item) {
+  <div class="drawer-backdrop" (click)="closeDetail()"></div>
+  <aside class="drawer">
+    <div class="drawer-head">
+      <div>
+        <span class="drawer-code tabular-nums">{{ item.codigo }}</span>
+        <h5 class="drawer-title mb-0">{{ item.nombre }}</h5>
+      </div>
+      <button class="btn-icon" (click)="closeDetail()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      @if (!editMode()) {
+        <!-- Vista lectura -->
+        <div class="drawer-meta">
+          <div><span class="meta-label">Créditos</span><span class="tabular-nums">{{ item.creditos }}</span></div>
+          <div><span class="meta-label">Semestre</span><span class="tabular-nums">{{ item.semestre }}</span></div>
+          <div><span class="meta-label">Área</span><span>{{ item.area }}</span></div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label small mb-1">Estado</label>
+          <div class="status-switch">
+            @for (s of statusOptions; track s) {
+              <button
+                type="button"
+                class="status-opt"
+                [class.active]="statusOf(item) === s"
+                [attr.data-status]="s"
+                (click)="setStatus(item, s)"
+              >
+                {{ statusLabel(s) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <h6 class="fw-bold mb-2">Prerrequisitos</h6>
+          @if (prereqViews(item).length === 0) {
+            <p class="text-muted small mb-0">Esta materia no tiene prerrequisitos.</p>
+          } @else {
+            <ul class="prereq-list">
+              @for (pv of prereqViews(item); track $index) {
+                <li class="prereq-item" [class.done]="pv.cumplido">
+                  @if (pv.textoLibre) {
+                    <span class="prereq-rule">⚑ {{ pv.textoLibre }}</span>
+                  } @else {
+                    <div class="prereq-opts">
+                      @for (op of pv.opciones; track op.codigo; let last = $last) {
+                        <span class="prereq-opt" [class.approved]="op.aprobado">
+                          <span class="prereq-opt-code tabular-nums">{{ op.codigo }}</span>
+                          @if (op.nombre) { <span class="prereq-opt-name"> — {{ op.nombre }}</span> }
+                          <span class="prereq-state">{{ op.aprobado ? '✓ aprobado' : 'pendiente' }}</span>
+                        </span>
+                        @if (!last) { <span class="prereq-or">o</span> }
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <button class="btn btn-primary w-100 mt-4" (click)="startEdit()">
+          ✎ Editar materia y prerrequisitos
+        </button>
+      } @else if (editModel) {
+        <!-- Vista edición -->
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label small mb-1">Código</label>
+            <input class="form-control form-control-sm" [(ngModel)]="editModel.codigo" />
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Créditos</label>
+            <input type="number" class="form-control form-control-sm tabular-nums" [(ngModel)]="editModel.creditos" />
+          </div>
+          <div class="col-12">
+            <label class="form-label small mb-1">Nombre</label>
+            <input class="form-control form-control-sm" [(ngModel)]="editModel.nombre" />
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Semestre</label>
+            <input type="number" min="1" max="8" class="form-control form-control-sm tabular-nums" [(ngModel)]="editModel.semestre" />
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Área</label>
+            <input class="form-control form-control-sm" [(ngModel)]="editModel.area" />
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label small mb-1">Prerrequisitos</label>
+          @if (editModel.prerrequisitos.length === 0) {
+            <p class="text-muted small">Sin prerrequisitos.</p>
+          } @else {
+            <ul class="edit-prereq-list">
+              @for (p of editModel.prerrequisitos; track $index) {
+                <li>
+                  <span class="tabular-nums">{{ p }}</span>
+                  @if (resolveName(p)) { <small class="text-muted"> — {{ resolveName(p) }}</small> }
+                  <button class="btn-icon btn-icon-danger btn-icon-xs" (click)="removePrereq($index)" aria-label="Quitar">✕</button>
+                </li>
+              }
+            </ul>
+          }
+          <div class="d-flex gap-2 mt-2">
+            <input
+              class="form-control form-control-sm"
+              list="pensumCodes"
+              placeholder="Código o texto (ej. ISIS-1225)"
+              [(ngModel)]="newPrereq"
+            />
+            <datalist id="pensumCodes">
+              @for (c of autocompleteItems(); track c) {
+                <option [value]="c"></option>
+              }
+            </datalist>
+            <button class="btn btn-sm btn-outline-primary" (click)="addPrereq()">+ Añadir</button>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button class="btn btn-primary flex-fill" [disabled]="savingDetail()" (click)="saveEdit()">
+            @if (savingDetail()) {
+              <span class="spinner-border spinner-border-sm me-1"></span> Guardando…
+            } @else { Guardar cambios }
+          </button>
+          <button class="btn btn-outline-secondary" (click)="cancelEdit()">Cancelar</button>
+        </div>
+      }
+    </div>
+  </aside>
+}

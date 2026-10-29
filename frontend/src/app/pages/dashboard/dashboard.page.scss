@@ -107,3 +107,135 @@
     color: #a12020;
   }
 }
+
+/* ---- Switch de vista de promedio ---- */
+.avg-switch {
+  display: inline-flex;
+  background: var(--as-surface-sunken);
+  border: 1px solid var(--as-border);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.avg-btn {
+  border: none;
+  background: transparent;
+  color: var(--as-text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.avg-btn.active {
+  background: var(--as-surface);
+  color: var(--as-accent-strong);
+  box-shadow: var(--as-shadow-xs);
+}
+
+/* ---- Tarjeta de riesgo clickeable ---- */
+.risk-card--click {
+  cursor: pointer;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+/* ---- Badge de nota actual ---- */
+.nota-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.nota-badge--safe {
+  background: var(--as-success-soft);
+  color: #065f46;
+}
+.nota-badge--mid {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+}
+.nota-badge--danger {
+  background: var(--as-danger-soft);
+  color: #a12020;
+}
+.nota-badge--none {
+  background: var(--as-surface-sunken);
+  color: var(--as-text-subtle);
+}
+
+/* ---- Próximas evaluaciones ---- */
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.upcoming-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  background: var(--as-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.upcoming-item:hover {
+  border-color: var(--as-border-strong);
+  box-shadow: var(--as-shadow-xs);
+}
+
+.upcoming-when {
+  display: flex;
+  flex-direction: column;
+  min-width: 90px;
+}
+.upcoming-days {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--as-accent-strong);
+}
+.upcoming-days.soon {
+  color: var(--as-danger);
+}
+.upcoming-date {
+  font-size: 0.72rem;
+  color: var(--as-text-subtle);
+}
+
+.upcoming-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.upcoming-corte {
+  font-weight: 600;
+  color: var(--as-text);
+}
+.upcoming-materia {
+  font-size: 0.8rem;
+}
+
+.upcoming-topics {
+  flex-basis: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--as-border);
+}
+
+.topic-chip {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+  font-weight: 500;
+  font-size: 0.72rem;
+}

@@ -43,6 +43,10 @@ export class Grade {
   @Column({ type: 'text', array: true, default: () => "'{}'" })
   temas: string[];
 
+  /** Fecha programada del corte (opcional). Usada en "Próximas Evaluaciones". */
+  @Column({ name: 'fecha', type: 'date', nullable: true })
+  fecha: string | null;
+
   /** Nota obtenida en el corte. null si aún no se evalúa. */
   @Column({
     name: 'calificacion_obtenida',
