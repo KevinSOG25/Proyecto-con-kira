@@ -9,7 +9,7 @@
     "test": "ng test"
   },
   "private": true,
-  "packageManager": "npm@11.4.2",
+  "packageManager": "pnpm@10.34.9",
   "dependencies": {
     "bootstrap": "^5.3.3",
     "chart.js": "^4.5.0",

@@ -34,6 +34,7 @@ export class SubjectsPage implements OnInit {
   selected = signal<Subject | null>(null);
   grades = signal<Grade[]>([]);
   simulation = signal<SimulationResult | null>(null);
+  simulating = signal(false);
   objetivo = 3.0;
 
   // Formulario de nuevo corte.
@@ -225,16 +226,20 @@ export class SubjectsPage implements OnInit {
     const materia = this.selected();
     if (!materia) return;
     this.error.set(null);
-    this.gradesService.simulate(materia.id, this.objetivo).subscribe({
-      next: (res) => this.simulation.set(res),
-      error: (err) =>
-        this.error.set(
-          extractHttpErrorMessage(
-            err,
-            'No se pudo simular (revisa que los porcentajes sumen 100%).',
+    this.simulating.set(true);
+    this.gradesService
+      .simulate(materia.id, this.objetivo)
+      .pipe(finalize(() => this.simulating.set(false)))
+      .subscribe({
+        next: (res) => this.simulation.set(res),
+        error: (err) =>
+          this.error.set(
+            extractHttpErrorMessage(
+              err,
+              'No se pudo simular (revisa que los porcentajes sumen 100%).',
+            ),
           ),
-        ),
-    });
+      });
   }
 
   /** Suma de porcentajes de los cortes actuales. */

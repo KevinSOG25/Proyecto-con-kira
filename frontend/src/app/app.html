@@ -1,7 +1,7 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+<nav class="navbar navbar-expand-lg app-navbar">
   <div class="container">
-    <a class="navbar-brand fw-bold" routerLink="/">
-      🎓 AcademicSync
+    <a class="navbar-brand d-flex align-items-center gap-2" routerLink="/">
+      <span class="brand-mark">🎓</span> AcademicSync
     </a>
     <button
       class="navbar-toggler"
@@ -16,7 +16,7 @@
     </button>
 
     <div class="collapse navbar-collapse" id="mainNav">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
         <li class="nav-item">
           <a
             class="nav-link"
@@ -34,7 +34,7 @@
         </li>
         <li class="nav-item">
           <a class="nav-link" routerLink="/tareas" routerLinkActive="active">
-            Tareas y Calendario
+            Tareas
           </a>
         </li>
         <li class="nav-item">
@@ -52,14 +52,18 @@
       <div class="d-flex align-items-center gap-2">
         @if (authState().authenticated) {
           <span class="auth-pill">
-            <span class="auth-dot"></span>
-            {{ authState().email || 'Conectado' }}
+            <span class="auth-avatar">
+              {{ (authState().email || 'U').charAt(0).toUpperCase() }}
+            </span>
+            <span class="auth-email text-truncate">
+              {{ authState().email || 'Conectado' }}
+            </span>
           </span>
-          <button class="btn btn-outline-light btn-sm" (click)="logout()">
-            Cerrar sesión
+          <button class="btn btn-outline-secondary btn-sm" (click)="logout()">
+            Salir
           </button>
         } @else {
-          <button class="btn btn-light btn-sm" (click)="login()">
+          <button class="btn btn-primary btn-sm" (click)="login()">
             <span class="me-1">🔗</span> Conectar con Google
           </button>
         }

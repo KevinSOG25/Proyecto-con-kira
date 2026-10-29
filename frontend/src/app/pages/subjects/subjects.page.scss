@@ -2,13 +2,87 @@
   color: rgba(255, 255, 255, 0.75) !important;
 }
 
+/* ---------- Lista de datos de cortes ---------- */
+.cuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
-/* Temas por corte */
+.cut-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  background: var(--as-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.cut-row:hover {
+  border-color: var(--as-border-strong);
+  box-shadow: var(--as-shadow-xs);
+  background: var(--as-surface-alt);
+}
+
+.cut-row--editing {
+  display: block;
+  border-color: var(--as-accent);
+  background: var(--as-accent-soft);
+}
+
+.cut-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cut-name {
+  font-weight: 600;
+  color: var(--as-text);
+}
+
+.cut-grade {
+  min-width: 70px;
+  text-align: right;
+}
+
+.cut-grade-value {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--as-text);
+}
+
+.cut-grade-pending {
+  font-size: 0.8rem;
+  color: var(--as-text-subtle);
+  font-style: italic;
+}
+
+.cut-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.cuts-empty {
+  text-align: center;
+  padding: 1.5rem;
+  border: 1px dashed var(--as-border);
+  border-radius: var(--as-radius-sm);
+}
+
+/* ---------- Temas por corte ---------- */
 .topic-toggle {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0;
+  border: none;
+  background: none;
   font-size: 0.75rem;
-  text-decoration: none;
+  font-weight: 600;
   color: var(--as-accent-strong);
-  font-weight: 500;
+  cursor: pointer;
 }
 
 .topic-chip {
@@ -18,7 +92,68 @@
   font-size: 0.72rem;
 }
 
-.topics-row td {
-  background: var(--as-surface-alt);
-  border-top: none;
+.topics-panel {
+  margin: -0.15rem 0 0.35rem;
+  padding: 0.75rem 0.95rem;
+  background: var(--as-surface-sunken);
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+}
+
+/* ---------- Simulador ---------- */
+.sim-card {
+  background: linear-gradient(180deg, var(--as-accent-soft) 0%, var(--as-surface) 55%);
+}
+
+.sim-icon {
+  font-size: 1.3rem;
+}
+
+.sim-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sim-target {
+  width: 130px;
+}
+
+.sim-btn {
+  min-height: 44px;
+}
+
+.sim-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.sim-stat {
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+}
+
+.sim-stat-label {
+  font-size: 0.72rem;
+  color: var(--as-text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.sim-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.sim-stat-value--accent {
+  color: var(--as-accent-strong);
+}
+
+@media (max-width: 575.98px) {
+  .sim-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
