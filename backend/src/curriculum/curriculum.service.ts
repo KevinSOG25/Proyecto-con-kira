@@ -431,10 +431,13 @@ export class CurriculumService implements OnModuleInit {
     if (elegibles.length === 0) {
       return {
         materias: [],
+        creditosObjetivo,
+        creditosProyectados: 0,
         creditosTotales: 0,
         justificacion:
           'No hay materias elegibles por prerrequisitos. Verifica tus materias aprobadas y en curso.',
         generadoPorIA: false,
+        provider: 'Respaldo' as const,
       };
     }
 
@@ -449,19 +452,27 @@ export class CurriculumService implements OnModuleInit {
     }));
 
     const systemInstruction = `Eres un consejero académico experto del programa de Ingeniería de Sistemas y Computación.
-Debes proponer la mejor combinación de materias para el PRÓXIMO SEMESTRE del estudiante.
-Reglas:
-- Responde ÚNICAMENTE con el JSON del esquema, sin texto adicional.
-- Elige materias SOLO de la lista de candidatas (todas ya cumplen prerrequisitos).
-- Apunta a una carga total cercana a ${creditosObjetivo} créditos (no la excedas en más de 1 crédito).
-- Prioriza materias con mayor "impactoCadena" (desbloquean más materias futuras / están en la ruta crítica).
-- Evita sobrecarga: equilibra materias difíciles (área Ciencias de la Computación, Programación y Software) con electivas/CBU/CLE más ligeras.
-- Si hay espacio, sugiere electivas (EP), CBU o CLE para balancear.
-- En "justificacion" explica pedagógicamente por qué esa combinación (máx 5 frases).`;
+Debes proponer la CARGA ACADÉMICA COMPLETA del PRÓXIMO SEMESTRE del estudiante.
+
+REGLAS OBLIGATORIAS (no negociables):
+- Responde ÚNICAMENTE con el JSON del esquema, sin texto adicional ni markdown.
+- La proyección DEBE incluir OBLIGATORIAMENTE entre 5 y 7 materias.
+- La suma de créditos ("creditosProyectados") DEBE quedar entre 16 y 18 créditos. NO entregues menos de 16 créditos bajo ninguna circunstancia.
+- Elige materias SOLO de la lista de candidatas (todas ya cumplen prerrequisitos). NO inventes códigos.
+- Si con las materias de mayor prioridad no alcanzas los 16 créditos, AGREGA más materias de la lista (electivas EP, CBU, CLE, o cualquier candidata disponible) hasta llegar al rango 16-18.
+- Prioriza materias con mayor "impactoCadena" (desbloquean más materias futuras / ruta crítica), pero completa siempre la carga mínima.
+- Equilibra: combina materias difíciles (Ciencias de la Computación, Programación y Software) con electivas/CBU/CLE más ligeras para evitar sobrecarga.
+- "creditosProyectados" = suma exacta de los créditos de TODAS las materias que incluyas.
+- "creditosObjetivo" = ${creditosObjetivo}.
+- Cada materia del arreglo "materias" debe tener: codigo, nombre, creditos y razon (por qué la recomiendas).
+- En "justificacion" explica pedagógicamente la combinación completa (máx 5 frases).`;
 
     const schema = {
       type: Type.OBJECT,
       properties: {
+        creditosObjetivo: { type: Type.NUMBER },
+        creditosProyectados: { type: Type.NUMBER },
+        justificacion: { type: Type.STRING },
         materias: {
           type: Type.ARRAY,
           items: {
@@ -472,20 +483,24 @@ Reglas:
               creditos: { type: Type.NUMBER },
               razon: { type: Type.STRING },
             },
-            required: ['codigo', 'nombre', 'creditos'],
+            required: ['codigo', 'nombre', 'creditos', 'razon'],
           },
         },
-        creditosTotales: { type: Type.NUMBER },
-        justificacion: { type: Type.STRING },
       },
-      required: ['materias', 'justificacion'],
+      required: [
+        'creditosObjetivo',
+        'creditosProyectados',
+        'justificacion',
+        'materias',
+      ],
     };
 
     const prompt = `Candidatas (ya elegibles por prerrequisitos):
 ${JSON.stringify(candidatas, null, 2)}
 
 Créditos objetivo del semestre: ${creditosObjetivo}.
-Propón la mejor combinación balanceada.`;
+Arma la CARGA COMPLETA: entre 5 y 7 materias que sumen de 16 a 18 créditos.
+Recuerda: nunca entregues menos de 16 créditos; si falta, agrega más candidatas.`;
 
     // Generación de baja latencia: timeout estricto 20s + fallback inmediato
     // (Groq o Gemini secundario). Devuelve el proveedor que resolvió.
@@ -496,20 +511,25 @@ Propón la mejor combinación balanceada.`;
         creditos: number;
         razon?: string;
       }[];
-      creditosTotales?: number;
+      creditosObjetivo?: number;
+      creditosProyectados?: number;
       justificacion: string;
     }>(systemInstruction, prompt, schema as any);
 
-    // Recalcula el total de créditos de forma fiable en el backend.
-    const creditosTotales = (result.materias ?? []).reduce(
+    // Recalcula el total de créditos de forma fiable en el backend
+    // (no confiamos ciegamente en el número que reporta el modelo).
+    const creditosProyectados = (result.materias ?? []).reduce(
       (acc, m) => acc + (Number(m.creditos) || 0),
       0,
     );
 
     return {
-      ...result,
-      creditosTotales,
+      materias: result.materias ?? [],
       creditosObjetivo,
+      creditosProyectados,
+      // Alias retrocompatible (el frontend previo usaba creditosTotales).
+      creditosTotales: creditosProyectados,
+      justificacion: result.justificacion,
       generadoPorIA: true,
       provider,
     };
