@@ -18,9 +18,17 @@ import {
 } from './curriculum.seed';
 import {
   CreateCurriculumItemDto,
+  ProjectSemesterDto,
   UpdateCurriculumItemDto,
   UpdateDegreeAuditDto,
 } from './dto/curriculum.dto';
+import { Type } from '@google/genai';
+import { GeminiService } from '../gemini/gemini.service';
+import {
+  CREDITOS_POSGRADO_OBJETIVO,
+  DISC_COURSES,
+  MAESTRIAS,
+} from './disc-courses.seed';
 
 @Injectable()
 export class CurriculumService implements OnModuleInit {
@@ -33,6 +41,7 @@ export class CurriculumService implements OnModuleInit {
     private readonly auditRepo: Repository<DegreeAudit>,
     @InjectRepository(UserTokens)
     private readonly tokensRepo: Repository<UserTokens>,
+    private readonly gemini: GeminiService,
   ) {}
 
   /** Siembra el pensum la primera vez que arranca si la tabla está vacía. */
@@ -300,10 +309,10 @@ export class CurriculumService implements OnModuleInit {
    * Devuelve el auditor de grado: requisitos transversales + progreso global
    * calculado con los códigos de materias aprobadas que envíe el frontend.
    */
-  async getDegreeAudit(aprobadas: string[] = []) {
+  async getDegreeAudit(aprobadas: string[] = [], enCurso: string[] = []) {
     const googleUserId = await this.resolveUser();
     const audit = await this.getOrCreateAudit(googleUserId);
-    const progreso = await this.computeProgress(aprobadas);
+    const progreso = await this.computeProgress(aprobadas, enCurso);
     return { audit, progreso, creditosTotales: CREDITOS_TOTALES };
   }
 
@@ -322,29 +331,43 @@ export class CurriculumService implements OnModuleInit {
       audit.internacionalizacion = dto.internacionalizacion;
 
     const saved = await this.auditRepo.save(audit);
-    const progreso = await this.computeProgress(dto.aprobadas ?? []);
+    const progreso = await this.computeProgress(
+      dto.aprobadas ?? [],
+      dto.enCurso ?? [],
+    );
     return { audit: saved, progreso, creditosTotales: CREDITOS_TOTALES };
   }
 
   /**
-   * Calcula el progreso global de carrera con base en los códigos aprobados.
-   * - créditos aprobados / totales (134) y % de avance,
+   * Calcula el progreso global de carrera con base en los códigos aprobados
+   * y en curso.
+   * - créditos aprobados / en curso / totales (134) y % de avance,
    * - conteo de CBUs y CLEs completados,
    * - elegibilidad para Proyecto de Grado (nivel 1 y 2 aprobados).
    */
-  private async computeProgress(aprobadas: string[]) {
+  private async computeProgress(aprobadas: string[], enCurso: string[] = []) {
     const allItems = await this.repo.find();
     const aprobadasNorm = new Set((aprobadas ?? []).map((c) => this.normCode(c)));
+    const enCursoNorm = new Set((enCurso ?? []).map((c) => this.normCode(c)));
 
     const esAprobada = (item: CurriculumItem) =>
       aprobadasNorm.has(this.normCode(item.codigo));
+    const esEnCurso = (item: CurriculumItem) =>
+      !esAprobada(item) && enCursoNorm.has(this.normCode(item.codigo));
 
     const creditosAprobados = allItems
       .filter(esAprobada)
       .reduce((acc, i) => acc + i.creditos, 0);
 
+    const creditosEnCurso = allItems
+      .filter(esEnCurso)
+      .reduce((acc, i) => acc + i.creditos, 0);
+
     const porcentajeAvance = Number(
       ((creditosAprobados / CREDITOS_TOTALES) * 100).toFixed(1),
+    );
+    const porcentajeEnCurso = Number(
+      ((creditosEnCurso / CREDITOS_TOTALES) * 100).toFixed(1),
     );
 
     // CBUs: códigos que empiezan por CBU, CBCC, CBPC, CBCA, CBCO.
@@ -366,8 +389,10 @@ export class CurriculumService implements OnModuleInit {
 
     return {
       creditosAprobados,
+      creditosEnCurso,
       creditosTotales: CREDITOS_TOTALES,
       porcentajeAvance,
+      porcentajeEnCurso,
       cbusTotales: cbus.length,
       cbusCompletados,
       clesTotales: cles.length,
@@ -375,6 +400,128 @@ export class CurriculumService implements OnModuleInit {
       nivel12Totales: nivel12.length,
       nivel12Aprobados,
       elegibleProyectoGrado,
+    };
+  }
+
+  // ============================================================
+  //  Proyección del próximo semestre con IA (Gemini)
+  // ============================================================
+
+  /**
+   * Usa Gemini para proponer una combinación balanceada de materias para el
+   * próximo semestre, respetando prerrequisitos, ruta crítica y carga objetivo.
+   */
+  async projectWithGemini(dto: ProjectSemesterDto) {
+    const aprobadas = dto.aprobadas ?? [];
+    const enCurso = dto.enCurso ?? [];
+    const creditosObjetivo = dto.creditosObjetivo ?? 17;
+
+    // 1) Materias elegibles (aprobadas + en curso cuentan como cursadas).
+    const { elegibles } = await this.simulateNextSemester([
+      ...aprobadas,
+      ...enCurso,
+    ]);
+
+    // 2) Impacto de ruta crítica para informar a la IA.
+    const critical = await this.criticalPath();
+    const impactoMap = new Map(
+      critical.map((c) => [this.normCode(c.codigo), c.impactoCadena]),
+    );
+
+    if (elegibles.length === 0) {
+      return {
+        materias: [],
+        creditosTotales: 0,
+        justificacion:
+          'No hay materias elegibles por prerrequisitos. Verifica tus materias aprobadas y en curso.',
+        generadoPorIA: false,
+      };
+    }
+
+    // 3) Catálogo compacto de candidatas para el prompt.
+    const candidatas = elegibles.map((e) => ({
+      codigo: e.codigo,
+      nombre: e.nombre,
+      creditos: e.creditos,
+      semestre: e.semestre,
+      area: e.area,
+      impactoCadena: impactoMap.get(this.normCode(e.codigo)) ?? 0,
+    }));
+
+    const systemInstruction = `Eres un consejero académico experto del programa de Ingeniería de Sistemas y Computación.
+Debes proponer la mejor combinación de materias para el PRÓXIMO SEMESTRE del estudiante.
+Reglas:
+- Responde ÚNICAMENTE con el JSON del esquema, sin texto adicional.
+- Elige materias SOLO de la lista de candidatas (todas ya cumplen prerrequisitos).
+- Apunta a una carga total cercana a ${creditosObjetivo} créditos (no la excedas en más de 1 crédito).
+- Prioriza materias con mayor "impactoCadena" (desbloquean más materias futuras / están en la ruta crítica).
+- Evita sobrecarga: equilibra materias difíciles (área Ciencias de la Computación, Programación y Software) con electivas/CBU/CLE más ligeras.
+- Si hay espacio, sugiere electivas (EP), CBU o CLE para balancear.
+- En "justificacion" explica pedagógicamente por qué esa combinación (máx 5 frases).`;
+
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        materias: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              codigo: { type: Type.STRING },
+              nombre: { type: Type.STRING },
+              creditos: { type: Type.NUMBER },
+              razon: { type: Type.STRING },
+            },
+            required: ['codigo', 'nombre', 'creditos'],
+          },
+        },
+        creditosTotales: { type: Type.NUMBER },
+        justificacion: { type: Type.STRING },
+      },
+      required: ['materias', 'justificacion'],
+    };
+
+    const prompt = `Candidatas (ya elegibles por prerrequisitos):
+${JSON.stringify(candidatas, null, 2)}
+
+Créditos objetivo del semestre: ${creditosObjetivo}.
+Propón la mejor combinación balanceada.`;
+
+    const result = await this.gemini.generateJson<{
+      materias: {
+        codigo: string;
+        nombre: string;
+        creditos: number;
+        razon?: string;
+      }[];
+      creditosTotales?: number;
+      justificacion: string;
+    }>(systemInstruction, [this.gemini.textPart(prompt)], schema as any);
+
+    // Recalcula el total de créditos de forma fiable en el backend.
+    const creditosTotales = (result.materias ?? []).reduce(
+      (acc, m) => acc + (Number(m.creditos) || 0),
+      0,
+    );
+
+    return {
+      ...result,
+      creditosTotales,
+      creditosObjetivo,
+      generadoPorIA: true,
+    };
+  }
+
+  // ============================================================
+  //  Catálogo DISC (posgrado / coterminal)
+  // ============================================================
+
+  /** Devuelve el catálogo de cursos de posgrado + maestrías. */
+  discCatalog() {
+    return {
+      cursos: DISC_COURSES,
+      maestrias: MAESTRIAS,
+      creditosPosgradoObjetivo: CREDITOS_POSGRADO_OBJETIVO,
     };
   }
 }

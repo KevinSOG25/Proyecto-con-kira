@@ -1,0 +1,138 @@
+.tmp-bloques {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.tmp-bloque {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+.tmp-x {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.materia-group {
+  margin-bottom: 0.75rem;
+}
+.materia-group-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--as-text);
+  margin-bottom: 0.25rem;
+}
+.sec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  margin-bottom: 0.3rem;
+  font-size: 0.82rem;
+}
+.btn-icon-xs {
+  width: 24px;
+  height: 24px;
+  font-size: 0.7rem;
+}
+
+/* Combinaciones */
+.combo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.combo-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid var(--as-border-strong);
+  background: var(--as-surface);
+  color: var(--as-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--as-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.combo-chip.active {
+  background: var(--as-accent-soft);
+  border-color: var(--as-accent);
+  color: var(--as-accent-strong);
+}
+.combo-meta {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--as-text-muted);
+}
+
+/* Cuadrícula semanal */
+.schedule-grid {
+  display: grid;
+  grid-template-columns: 54px repeat(6, 1fr);
+  gap: 2px;
+  background: var(--as-border);
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  overflow: hidden;
+}
+.sg-corner,
+.sg-dayhead,
+.sg-hour,
+.sg-cell {
+  background: var(--as-surface);
+  min-height: 40px;
+}
+.sg-dayhead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--as-text-muted);
+  padding: 0.35rem;
+}
+.sg-hour {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.68rem;
+  color: var(--as-text-subtle);
+}
+.sg-cell {
+  position: relative;
+  padding: 1px;
+}
+.sg-block {
+  height: 100%;
+  min-height: 38px;
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.2rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+}
+.sg-block-mat {
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.sg-block-sec {
+  font-size: 0.6rem;
+  opacity: 0.9;
+}

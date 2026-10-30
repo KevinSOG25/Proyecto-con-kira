@@ -23,6 +23,11 @@ export const routes: Routes = [
       import('./pages/planning/planning.page').then((m) => m.PlanningPage),
   },
   {
+    path: 'horarios',
+    loadComponent: () =>
+      import('./pages/schedule/schedule.page').then((m) => m.SchedulePage),
+  },
+  {
     path: 'pensum',
     loadComponent: () =>
       import('./pages/pensum/pensum.page').then((m) => m.PensumPage),

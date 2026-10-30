@@ -1,0 +1,173 @@
+<h2 class="page-title mb-1">Generador de Horarios</h2>
+<p class="text-muted mb-4">Arma y optimiza el horario de tu próximo semestre sin choques.</p>
+
+@if (error()) {
+  <div class="alert alert-warning">{{ error() }}</div>
+}
+
+<div class="row g-4">
+  <!-- Columna izquierda: alta de secciones + preferencias -->
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Agregar sección</h5>
+        <div class="row g-2">
+          <div class="col-7">
+            <label class="form-label small mb-1">Materia</label>
+            <input class="form-control form-control-sm" [(ngModel)]="nuevaMateria" placeholder="Ej. Cálculo" />
+          </div>
+          <div class="col-5">
+            <label class="form-label small mb-1">Sección</label>
+            <input class="form-control form-control-sm" [(ngModel)]="nuevaSeccion" placeholder="Ej. 1" />
+          </div>
+        </div>
+
+        <div class="row g-2 align-items-end mt-1">
+          <div class="col-4">
+            <label class="form-label small mb-1">Día</label>
+            <select class="form-select form-select-sm" [(ngModel)]="bloqueDia">
+              @for (d of dias; track $index) {
+                <option [value]="$index">{{ d }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">Inicio</label>
+            <input type="time" class="form-control form-control-sm" [(ngModel)]="bloqueInicio" />
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">Fin</label>
+            <input type="time" class="form-control form-control-sm" [(ngModel)]="bloqueFin" />
+          </div>
+          <div class="col-2">
+            <button class="btn btn-sm btn-outline-primary w-100" (click)="addBloqueTmp()">+</button>
+          </div>
+        </div>
+
+        @if (bloquesTmp().length) {
+          <div class="tmp-bloques mt-2">
+            @for (b of bloquesTmp(); track $index) {
+              <span class="tmp-bloque">
+                {{ dias[b.dia] }} {{ fmt(b.inicio) }}-{{ fmt(b.fin) }}
+                <button class="tmp-x" (click)="removeBloqueTmp($index)">✕</button>
+              </span>
+            }
+          </div>
+        }
+
+        <button class="btn btn-primary btn-sm w-100 mt-3" (click)="addSeccion()">
+          Guardar sección
+        </button>
+      </div>
+    </div>
+
+    <!-- Preferencias -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Preferencias</h5>
+        <div class="form-check mb-2">
+          <input type="checkbox" class="form-check-input" id="minHuecos"
+            [ngModel]="prefMinimizarHuecos()" (ngModelChange)="prefMinimizarHuecos.set($event)" />
+          <label class="form-check-label" for="minHuecos">Minimizar huecos entre clases</label>
+        </div>
+        <label class="form-label small mb-1">Jornada</label>
+        <select class="form-select form-select-sm mb-2"
+          [ngModel]="prefJornada()" (ngModelChange)="prefJornada.set($event)">
+          <option value="cualquiera">Cualquiera</option>
+          <option value="manana">Solo mañanas</option>
+          <option value="tarde">Solo tardes</option>
+        </select>
+        <label class="form-label small mb-1">Dejar un día libre</label>
+        <select class="form-select form-select-sm"
+          [ngModel]="prefDiaLibre()" (ngModelChange)="prefDiaLibre.set($event === null ? null : +$event)">
+          <option [ngValue]="null">Ninguno</option>
+          @for (d of dias; track $index) {
+            <option [ngValue]="$index">{{ d }}</option>
+          }
+        </select>
+
+        <button class="btn btn-primary w-100 mt-3" (click)="generar()">
+          ⚡ Generar combinaciones
+        </button>
+      </div>
+    </div>
+
+    <!-- Secciones agregadas -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Secciones agregadas</h5>
+        @if (secciones().length === 0) {
+          <p class="text-muted small mb-0">Aún no has agregado secciones.</p>
+        } @else {
+          @for (m of materias(); track m) {
+            <div class="materia-group">
+              <div class="materia-group-title">{{ m }}</div>
+              @for (s of seccionesDe(m); track s.id) {
+                <div class="sec-row">
+                  <span>
+                    <strong>Sec. {{ s.seccion }}</strong>
+                    <small class="text-muted d-block">{{ fmtBloques(s) }}</small>
+                  </span>
+                  <button class="btn-icon btn-icon-danger btn-icon-xs" (click)="removeSeccion(s.id)">✕</button>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna derecha: combinaciones + cuadrícula -->
+  <div class="col-lg-7">
+    @if (combinaciones().length) {
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">{{ combinaciones().length }} combinaciones válidas</h5>
+          <div class="combo-chips">
+            @for (c of combinaciones(); track $index) {
+              <button
+                class="combo-chip"
+                [class.active]="c === seleccionada()"
+                (click)="seleccionar(c)"
+              >
+                Opción {{ $index + 1 }}
+                <span class="combo-meta tabular-nums">{{ c.diasUsados.length }}d · {{ c.huecos }}min huecos</span>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Cuadrícula semanal -->
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Vista semanal</h5>
+        @if (!seleccionada()) {
+          <p class="text-muted small">Genera combinaciones para ver tu horario aquí.</p>
+        } @else {
+          <div class="schedule-grid">
+            <div class="sg-corner"></div>
+            @for (d of dias; track $index) {
+              <div class="sg-dayhead">{{ d }}</div>
+            }
+            @for (h of horas; track h) {
+              <div class="sg-hour tabular-nums">{{ h }}:00</div>
+              @for (d of dias; track $index) {
+                <div class="sg-cell">
+                  @if (bloqueEn($index, h); as blk) {
+                    <div class="sg-block" [style.background]="colorMateria(blk.materia)">
+                      <span class="sg-block-mat">{{ blk.materia }}</span>
+                      <span class="sg-block-sec">Sec. {{ blk.seccion }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

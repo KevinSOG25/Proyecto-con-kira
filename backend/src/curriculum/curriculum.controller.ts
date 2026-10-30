@@ -12,6 +12,7 @@ import {
 import { CurriculumService } from './curriculum.service';
 import {
   CreateCurriculumItemDto,
+  ProjectSemesterDto,
   SimulateNextSemesterDto,
   UpdateCurriculumItemDto,
   UpdateDegreeAuditDto,
@@ -33,14 +34,24 @@ export class CurriculumController {
     return this.curriculumService.criticalPath();
   }
 
+  /** Catálogo de posgrado DISC + maestrías (para coterminal/énfasis). */
+  @Get('disc-catalog')
+  discCatalog() {
+    return this.curriculumService.discCatalog();
+  }
+
   /**
    * Auditor de grado: requisitos transversales + progreso global.
    * ?aprobadas=ISIS-1221,MATE-1201 (coma-separado) para calcular créditos.
    */
   @Get('degree-audit')
-  getDegreeAudit(@Query('aprobadas') aprobadas?: string) {
-    const codes = aprobadas ? aprobadas.split(',').filter(Boolean) : [];
-    return this.curriculumService.getDegreeAudit(codes);
+  getDegreeAudit(
+    @Query('aprobadas') aprobadas?: string,
+    @Query('enCurso') enCurso?: string,
+  ) {
+    const ap = aprobadas ? aprobadas.split(',').filter(Boolean) : [];
+    const ec = enCurso ? enCurso.split(',').filter(Boolean) : [];
+    return this.curriculumService.getDegreeAudit(ap, ec);
   }
 
   /** Actualiza los requisitos transversales del auditor de grado. */
@@ -53,6 +64,12 @@ export class CurriculumController {
   @Post('simulate-next-semester')
   simulateNextSemester(@Body() dto: SimulateNextSemesterDto) {
     return this.curriculumService.simulateNextSemester(dto.aprobadas ?? []);
+  }
+
+  /** Proyección con IA: Gemini propone una combinación balanceada. */
+  @Post('project-semester')
+  projectSemester(@Body() dto: ProjectSemesterDto) {
+    return this.curriculumService.projectWithGemini(dto);
   }
 
   @Post()

@@ -39,6 +39,14 @@
     {{ criticalMode() ? '✓ Modo ruta crítica' : '🧭 Modo ruta crítica' }}
   </button>
 
+  <button
+    class="btn btn-sm btn-outline-primary"
+    [disabled]="aiProjecting()"
+    (click)="proyectarConIA()"
+  >
+    ✨ Proyectar con IA
+  </button>
+
   @if (criticalMode() && focusCode()) {
     <span class="text-muted small align-self-center">
       Mostrando dependientes de <strong>{{ focusCode() }}</strong> · toca una tarjeta para cambiar
@@ -51,6 +59,121 @@
 @if (error()) {
   <div class="alert alert-warning">{{ error() }}</div>
 }
+
+<!-- Énfasis profesional + Coterminal -->
+<div class="card audit-card mb-4">
+  <div class="enfasis-bar">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="audit-icon">🎯</span>
+      <strong>Énfasis profesional</strong>
+      <select
+        class="form-select form-select-sm"
+        style="max-width: 320px"
+        [ngModel]="enfasis()"
+        (ngModelChange)="setEnfasis($event)"
+      >
+        <option value="">Todas las líneas</option>
+        @for (op of enfasisOpciones; track op) {
+          <option [value]="op">{{ op }}</option>
+        }
+      </select>
+      @if (enfasis()) {
+        <span class="enfasis-progress tabular-nums">
+          Avance concentración: {{ avanceEnfasis() }}%
+        </span>
+      }
+    </div>
+
+    <button
+      class="btn btn-sm"
+      [class.btn-primary]="coterminalMode()"
+      [class.btn-outline-primary]="!coterminalMode()"
+      (click)="toggleCoterminal()"
+    >
+      {{ coterminalMode() ? '✓ Modo Coterminal' : '🎓 Modo Coterminal' }}
+    </button>
+  </div>
+
+  @if (coterminalMode()) {
+    <div class="coterminal-body">
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <label class="form-label small mb-0">Maestría objetivo</label>
+        <select
+          class="form-select form-select-sm"
+          style="max-width: 420px"
+          [ngModel]="maestriaObjetivo()"
+          (ngModelChange)="setMaestria($event)"
+        >
+          @for (m of maestrias(); track m.codigo) {
+            <option [value]="m.codigo">{{ m.codigo }} — {{ m.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Barra de progreso dual -->
+      <div class="dual-progress">
+        <div class="dual-row">
+          <span class="dual-label">Pregrado</span>
+          <div class="dual-track">
+            <div class="dual-fill dual-fill-pre" [style.width.%]="progreso()?.porcentajeAvance || 0"></div>
+          </div>
+          <span class="dual-val tabular-nums">{{ progreso()?.creditosAprobados || 0 }} / 134</span>
+        </div>
+        <div class="dual-row">
+          <span class="dual-label">Posgrado</span>
+          <div class="dual-track">
+            <div class="dual-fill dual-fill-pos" [style.width.%]="porcentajePosgrado()"></div>
+          </div>
+          <span class="dual-val tabular-nums">{{ creditosPosgradoAdelantados() }} / {{ creditosPosgradoObjetivo() }}</span>
+        </div>
+      </div>
+
+      <!-- Cursos de posgrado para cubrir EP -->
+      <h6 class="fw-bold mt-3 mb-2">
+        Cursos de posgrado para {{ maestriaObjetivo() }}
+        <span class="text-muted small fw-normal">· cubren espacios de Electiva Profesional (EP)</span>
+      </h6>
+      <div class="pos-course-grid">
+        @for (c of cursosPosgrado(); track c.codigo) {
+          @if (esValidoParaMaestria(c)) {
+            <button
+              class="pos-course"
+              [class.on]="isEpSeleccionado(c.codigo)"
+              (click)="toggleEpPosgrado(c.codigo)"
+              [title]="c.codigo + ' — ' + c.nombre"
+            >
+              <div class="pos-course-top">
+                <span class="pos-code tabular-nums">{{ c.codigo }}</span>
+                <span class="pos-cred tabular-nums">{{ c.creditos }} cr</span>
+              </div>
+              <div class="pos-name">{{ c.nombre }}</div>
+              <span class="pos-clasif">{{ clasificacionPara(c) }}</span>
+            </button>
+          }
+        }
+      </div>
+
+      <!-- Agregar curso personalizado -->
+      <div class="pos-custom mt-3">
+        <label class="form-label small mb-1">Agregar curso de posgrado personalizado (tópicos especiales)</label>
+        <div class="row g-2">
+          <div class="col-4">
+            <input class="form-control form-control-sm" placeholder="Código" [(ngModel)]="nuevoCursoCustomCodigo" />
+          </div>
+          <div class="col-5">
+            <input class="form-control form-control-sm" placeholder="Nombre" [(ngModel)]="nuevoCursoCustomNombre" />
+          </div>
+          <div class="col-2">
+            <input type="number" class="form-control form-control-sm tabular-nums" [(ngModel)]="nuevoCursoCustomCreditos" />
+          </div>
+          <div class="col-1">
+            <button class="btn btn-sm btn-outline-primary w-100" (click)="agregarCursoCustom()">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
 
 <!-- Auditor de Grado -->
 @if (progreso(); as p) {
@@ -79,12 +202,23 @@
               {{ p.creditosAprobados }} / {{ p.creditosTotales }} créditos · {{ p.porcentajeAvance }}%
             </span>
           </div>
+          <!-- Barra segmentada: Aprobados | En curso | Restantes -->
           <div class="career-progress">
-            <div class="career-progress-fill" [style.width.%]="p.porcentajeAvance"></div>
+            <div
+              class="seg seg-ok"
+              [style.width.%]="p.porcentajeAvance"
+              [title]="'Aprobados: ' + p.creditosAprobados + ' cr'"
+            ></div>
+            <div
+              class="seg seg-curso"
+              [style.width.%]="p.porcentajeEnCurso"
+              [title]="'En curso: ' + p.creditosEnCurso + ' cr'"
+            ></div>
           </div>
           <div class="progress-breakdown tabular-nums">
-            <span class="brk brk-ok">Aprobados: {{ p.creditosAprobados }}</span>
-            <span class="brk brk-rest">Restantes: {{ p.creditosTotales - p.creditosAprobados }}</span>
+            <span class="brk brk-ok">● Aprobados: {{ p.creditosAprobados }}</span>
+            <span class="brk brk-curso">● En curso: {{ p.creditosEnCurso }}</span>
+            <span class="brk brk-rest">● Restantes: {{ p.creditosTotales - p.creditosAprobados - p.creditosEnCurso }}</span>
             <span class="brk">CBUs: {{ p.cbusCompletados }}/{{ p.cbusTotales }}</span>
             <span class="brk">CLEs: {{ p.clesCompletados }}/{{ p.clesTotales }}</span>
             <span class="brk">Nivel 1-2: {{ p.nivel12Aprobados }}/{{ p.nivel12Totales }}</span>
@@ -137,9 +271,10 @@
             <div class="req-item" [class.done]="!!a.cursoTipoE1">
               <div class="req-label">Curso Tipo E 1</div>
               <select
-                class="form-select form-select-sm"
+                class="form-select form-select-sm text-truncate"
                 [ngModel]="a.cursoTipoE1 || ''"
                 (ngModelChange)="setCursoTipoE1($event)"
+                [title]="codigoNombreCompleto(a.cursoTipoE1)"
               >
                 <option value="">Sin asignar</option>
                 @for (m of materiasAsignables(); track m.id) {
@@ -152,9 +287,10 @@
             <div class="req-item" [class.done]="!!a.cursoTipoE2">
               <div class="req-label">Curso Tipo E 2</div>
               <select
-                class="form-select form-select-sm"
+                class="form-select form-select-sm text-truncate"
                 [ngModel]="a.cursoTipoE2 || ''"
                 (ngModelChange)="setCursoTipoE2($event)"
+                [title]="codigoNombreCompleto(a.cursoTipoE2)"
               >
                 <option value="">Sin asignar</option>
                 @for (m of materiasAsignables(); track m.id) {
@@ -167,9 +303,10 @@
             <div class="req-item" [class.done]="!!a.cursoTipoEpsilon">
               <div class="req-label">Curso Tipo Épsilon (Ética)</div>
               <select
-                class="form-select form-select-sm"
+                class="form-select form-select-sm text-truncate"
                 [ngModel]="a.cursoTipoEpsilon || ''"
                 (ngModelChange)="setCursoTipoEpsilon($event)"
+                [title]="codigoNombreCompleto(a.cursoTipoEpsilon)"
               >
                 <option value="">Sin asignar</option>
                 @for (m of materiasAsignables(); track m.id) {
@@ -183,6 +320,83 @@
     }
   </div>
 }
+
+<!-- Simulador de PGA acumulado -->
+<div class="card audit-card mb-4">
+  <button type="button" class="audit-head" (click)="togglePga()">
+    <div class="d-flex align-items-center gap-2">
+      <span class="audit-icon">🧮</span>
+      <strong>Simulador de PGA acumulado</strong>
+    </div>
+    <span class="audit-caret">{{ pgaOpen() ? '▾' : '▸' }}</span>
+  </button>
+
+  @if (pgaOpen()) {
+    <div class="audit-body">
+      <div class="row g-3 mb-3">
+        <div class="col-sm-6">
+          <label class="form-label small mb-1">PGA actual</label>
+          <input
+            type="number" step="0.01" min="0" max="5"
+            class="form-control form-control-sm tabular-nums"
+            [(ngModel)]="pgaActual"
+            placeholder="Ej. 4.12"
+          />
+        </div>
+        <div class="col-sm-6">
+          <label class="form-label small mb-1">Créditos acumulados</label>
+          <input
+            type="number" min="0"
+            class="form-control form-control-sm tabular-nums"
+            [(ngModel)]="creditosAcumulados"
+            placeholder="Ej. 80"
+          />
+        </div>
+      </div>
+
+      @if (materiasEnCurso().length === 0) {
+        <p class="text-muted small mb-0">
+          No tienes materias marcadas como "En curso". Marca materias en el pensum para proyectar sus notas.
+        </p>
+      } @else {
+        <h6 class="fw-bold mb-2">Notas proyectadas (materias en curso)</h6>
+        <div class="pga-courses">
+          @for (c of materiasEnCurso(); track c.id) {
+            <div class="pga-course">
+              <div class="pga-course-info">
+                <span class="pga-course-name" [title]="c.codigo + ' — ' + c.nombre">{{ c.nombre }}</span>
+                <span class="pga-course-cred tabular-nums">{{ c.creditos }} cr</span>
+              </div>
+              <div class="pga-course-slider">
+                <input
+                  type="range" min="1" max="5" step="0.1"
+                  [ngModel]="notaProyectada(c.codigo)"
+                  (ngModelChange)="setNotaProyectada(c.codigo, $event)"
+                />
+                <span class="pga-nota tabular-nums">{{ notaProyectada(c.codigo) | number: '1.1-1' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="pga-results">
+          <div class="pga-result">
+            <span class="pga-result-label">Promedio del semestre</span>
+            <span class="pga-result-value tabular-nums">{{ promedioSemestreProyectado() | number: '1.2-2' }}</span>
+          </div>
+          <div class="pga-result pga-result--main">
+            <span class="pga-result-label">Nuevo PGA proyectado</span>
+            <span class="pga-result-value tabular-nums">{{ nuevoPgaProyectado() | number: '1.2-2' }}</span>
+          </div>
+          <div class="pga-result">
+            <span class="pga-result-label">Créditos del semestre</span>
+            <span class="pga-result-value tabular-nums">{{ creditosSemestreEnCurso() }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
 
 @if (loading()) {
   <div class="text-center py-5">
@@ -451,4 +665,65 @@
       }
     </div>
   </aside>
+}
+
+<!-- Modal: Proyección con IA (Gemini) -->
+@if (aiModalOpen()) {
+  <div class="ai-modal-backdrop" (click)="closeAiModal()"></div>
+  <div class="ai-modal" role="dialog" aria-modal="true">
+    <div class="ai-modal-head">
+      <div class="d-flex align-items-center gap-2">
+        <span class="ai-spark">✨</span>
+        <h5 class="mb-0">Proyección del próximo semestre</h5>
+      </div>
+      <button class="btn-icon" (click)="closeAiModal()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="ai-modal-body">
+      @if (aiProjecting()) {
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="text-muted mt-2 mb-0">Gemini está analizando tu malla y la ruta crítica…</p>
+        </div>
+      } @else if (aiProjection(); as proj) {
+        <div class="ai-summary">
+          <span class="ai-credits tabular-nums">{{ proj.creditosTotales }} créditos</span>
+          @if (proj.creditosObjetivo) {
+            <span class="text-muted small">· objetivo {{ proj.creditosObjetivo }}</span>
+          }
+          @if (proj.generadoPorIA) {
+            <span class="ai-badge">Generado por Gemini</span>
+          }
+        </div>
+
+        @if (proj.materias.length) {
+          <ul class="ai-course-list">
+            @for (m of proj.materias; track m.codigo) {
+              <li class="ai-course">
+                <div class="ai-course-top">
+                  <span class="ai-course-code tabular-nums">{{ m.codigo }}</span>
+                  <span class="ai-course-cred tabular-nums">{{ m.creditos }} cr</span>
+                </div>
+                <div class="ai-course-name">{{ m.nombre }}</div>
+                @if (m.razon) {
+                  <div class="ai-course-reason text-muted small">{{ m.razon }}</div>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="ai-justification">
+          <h6 class="fw-bold mb-1">Justificación pedagógica</h6>
+          <p class="mb-0">{{ proj.justificacion }}</p>
+        </div>
+      } @else {
+        <p class="text-muted">No se obtuvo una recomendación.</p>
+      }
+    </div>
+
+    <div class="ai-modal-foot">
+      <button class="btn btn-primary" (click)="closeAiModal()">Entendido</button>
+    </div>
+  </div>
 }

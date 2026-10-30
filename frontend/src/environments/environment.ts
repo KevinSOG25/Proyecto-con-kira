@@ -1,5 +1,5 @@
-/** Configuración de producción. Ajustar apiUrl a la URL de Cloud Run. */
+/** Configuración de producción: apunta al backend desplegado en Cloud Run. */
 export const environment = {
   production: true,
-  apiUrl: 'https://academicsync-backend-xxxxx.run.app',
+  apiUrl: 'https://academic-backend-992852794918.us-central1.run.app',
 };
