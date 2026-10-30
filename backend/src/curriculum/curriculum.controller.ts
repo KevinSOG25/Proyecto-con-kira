@@ -11,6 +11,7 @@ import {
 import { CurriculumService } from './curriculum.service';
 import {
   CreateCurriculumItemDto,
+  SimulateNextSemesterDto,
   UpdateCurriculumItemDto,
 } from './dto/curriculum.dto';
 
@@ -22,6 +23,18 @@ export class CurriculumController {
   @Get()
   findAll() {
     return this.curriculumService.findAll();
+  }
+
+  /** Ruta crítica: impacto en cadena (materias que bloquea cada asignatura). */
+  @Get('critical-path')
+  criticalPath() {
+    return this.curriculumService.criticalPath();
+  }
+
+  /** Simula el próximo semestre: materias elegibles dadas las aprobadas. */
+  @Post('simulate-next-semester')
+  simulateNextSemester(@Body() dto: SimulateNextSemesterDto) {
+    return this.curriculumService.simulateNextSemester(dto.aprobadas ?? []);
   }
 
   @Post()

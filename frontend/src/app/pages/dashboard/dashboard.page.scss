@@ -239,3 +239,131 @@
   font-weight: 500;
   font-size: 0.72rem;
 }
+
+/* ---- Matriz de Retorno de Esfuerzo ---- */
+.bg-accent-soft {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+}
+
+.effort-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.effort-item {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  background: var(--as-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.effort-item:hover {
+  border-color: var(--as-border-strong);
+  box-shadow: var(--as-shadow-xs);
+}
+
+.effort-main {
+  flex: 1 1 280px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.effort-materia {
+  color: var(--as-text);
+}
+.effort-code {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--as-text-muted);
+}
+
+.effort-corte {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.effort-dias {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--as-accent-strong);
+}
+.effort-dias.soon {
+  color: var(--as-danger);
+}
+
+.effort-impacto {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.impacto-pill {
+  display: inline-block;
+  background: var(--as-success-soft);
+  color: #065f46;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+.effort-motivo {
+  font-style: italic;
+}
+
+/* Badges de prioridad */
+.effort-prio {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+}
+.prio-critica {
+  background: var(--as-danger-soft);
+  color: #a12020;
+}
+.prio-alta {
+  background: var(--as-warning-soft);
+  color: #92600a;
+}
+.prio-media {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+}
+.prio-baja {
+  background: var(--as-surface-sunken);
+  color: var(--as-text-muted);
+}
+
+/* Micro-simulador */
+.effort-sim {
+  flex: 0 0 220px;
+  padding: 0.5rem 0.75rem;
+  background: var(--as-surface-sunken);
+  border-radius: var(--as-radius-sm);
+}
+.effort-sim .form-range {
+  accent-color: var(--as-accent);
+}
+.effort-sim-result {
+  font-size: 0.8rem;
+  margin-top: 0.35rem;
+  color: var(--as-text);
+}
+.effort-delta {
+  color: var(--as-success);
+  font-weight: 700;
+}
+
+@media (max-width: 575.98px) {
+  .effort-sim { flex-basis: 100%; }
+}

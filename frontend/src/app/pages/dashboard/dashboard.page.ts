@@ -1,12 +1,18 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartData, ChartOptions } from 'chart.js';
 import { finalize } from 'rxjs';
 import { AnalyticsService } from '../../services/analytics.service';
 import { SubjectSelectionService } from '../../services/subject-selection.service';
-import { DashboardAnalytics, SubjectGrade } from '../../models/api.models';
+import {
+  DashboardAnalytics,
+  EffortMatrixItem,
+  PriorityLevel,
+  SubjectGrade,
+} from '../../models/api.models';
 
 const NOTA_MAXIMA = 5;
 
@@ -14,7 +20,7 @@ type AvgView = 'relativa' | 'neta';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [CommonModule, BaseChartDirective],
+  imports: [CommonModule, FormsModule, BaseChartDirective],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss',
 })
@@ -206,9 +212,54 @@ export class DashboardPage implements OnInit {
     return this.expandedEvalId() === gradeId;
   }
 
-  diasLabel(dias: number): string {
+  diasLabel(dias: number | null): string {
+    if (dias === null) return 'Sin fecha';
     if (dias === 0) return 'Hoy';
     if (dias === 1) return 'Mañana';
     return `En ${dias} días`;
+  }
+
+  // ---- Matriz de Retorno de Esfuerzo ----
+
+  /** Nota esperada del micro-simulador por corte (por defecto 4.0). */
+  private simNotas = signal<Record<string, number>>({});
+
+  simNota(corteId: string): number {
+    return this.simNotas()[corteId] ?? 4.0;
+  }
+
+  setSimNota(corteId: string, value: number | string): void {
+    const n = Math.max(0, Math.min(5, Number(value) || 0));
+    this.simNotas.update((cur) => ({ ...cur, [corteId]: n }));
+  }
+
+  /** Clase de color del badge de prioridad. */
+  prioridadClass(nivel: PriorityLevel): string {
+    return `prio-${nivel.toLowerCase()}`;
+  }
+
+  prioridadLabel(nivel: PriorityLevel): string {
+    switch (nivel) {
+      case 'CRITICA':
+        return 'Crítica';
+      case 'ALTA':
+        return 'Alta';
+      case 'MEDIA':
+        return 'Media';
+      default:
+        return 'Baja';
+    }
+  }
+
+  /** Impacto proyectado del micro-simulador: nota elegida × sensibilidad×10. */
+  impactoSimulado(item: EffortMatrixItem): number {
+    // impacto = sensibilidadDecima * (nota / 0.1) = sensibilidadDecima * nota * 10
+    return item.sensibilidadDecima * this.simNota(item.corteId) * 10;
+  }
+
+  /** Promedio semestral proyectado si saca la nota elegida en este corte. */
+  promedioProyectado(item: EffortMatrixItem): number {
+    const base = this.promedioNeto();
+    return Number((base + this.impactoSimulado(item)).toFixed(2));
   }
 }

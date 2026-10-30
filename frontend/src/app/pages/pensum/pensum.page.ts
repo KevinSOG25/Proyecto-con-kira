@@ -6,8 +6,10 @@ import { CurriculumService } from '../../services/curriculum.service';
 import { SubjectsService } from '../../services/subjects.service';
 import { extractHttpErrorMessage } from '../../utils/http-error';
 import {
+  CriticalPathNode,
   CurriculumItem,
   CurriculumStatus,
+  SimulateNextSemesterResult,
   Subject,
 } from '../../models/api.models';
 
@@ -340,4 +342,143 @@ export class PensumPage implements OnInit {
   autocompleteItems = computed(() =>
     this.items().map((i) => `${i.codigo}`),
   );
+
+  // ============================================================
+  //  Proyector de matrícula (próximo semestre)
+  // ============================================================
+  projectionMode = signal(false);
+  projecting = signal(false);
+  elegiblesNorm = signal<Set<string>>(new Set());
+  elegiblesCount = signal(0);
+  creditosSugeridos = signal(0);
+
+  /** Códigos aprobados + en curso (normalizados) para la simulación. */
+  private aprobadasYEnCurso(): string[] {
+    return this.items()
+      .filter((i) => {
+        const st = this.statusOf(i);
+        return st === 'aprobada' || st === 'en_curso';
+      })
+      .map((i) => i.codigo);
+  }
+
+  toggleProjection(): void {
+    if (this.projectionMode()) {
+      this.projectionMode.set(false);
+      this.elegiblesNorm.set(new Set());
+      return;
+    }
+    this.projecting.set(true);
+    this.error.set(null);
+    this.curriculumService
+      .simulateNextSemester(this.aprobadasYEnCurso())
+      .pipe(finalize(() => this.projecting.set(false)))
+      .subscribe({
+        next: (res: SimulateNextSemesterResult) => {
+          this.elegiblesNorm.set(
+            new Set(res.elegibles.map((e) => this.normCode(e.codigo))),
+          );
+          this.elegiblesCount.set(res.totalElegibles);
+          this.creditosSugeridos.set(res.creditosSugeridos);
+          this.projectionMode.set(true);
+        },
+        error: (err) =>
+          this.error.set(
+            extractHttpErrorMessage(err, 'No se pudo proyectar el próximo semestre.'),
+          ),
+      });
+  }
+
+  isElegible(item: CurriculumItem): boolean {
+    return (
+      this.projectionMode() && this.elegiblesNorm().has(this.normCode(item.codigo))
+    );
+  }
+
+  // ============================================================
+  //  Ruta crítica (grafo de dependencias)
+  // ============================================================
+  criticalMode = signal(false);
+  private criticalData = signal<CriticalPathNode[]>([]);
+  /** Materia foco de la ruta crítica (su cadena descendente se resalta). */
+  focusCode = signal<string | null>(null);
+  private highlightedNorm = signal<Set<string>>(new Set());
+
+  private ensureCriticalData(): void {
+    if (this.criticalData().length) return;
+    this.curriculumService.criticalPath().subscribe({
+      next: (nodes) => this.criticalData.set(nodes),
+    });
+  }
+
+  toggleCriticalMode(): void {
+    this.criticalMode.update((v) => !v);
+    if (this.criticalMode()) {
+      this.ensureCriticalData();
+    } else {
+      this.focusCode.set(null);
+      this.highlightedNorm.set(new Set());
+    }
+  }
+
+  /** Nodo de ruta crítica de una materia. */
+  criticalNode(item: CurriculumItem): CriticalPathNode | undefined {
+    const target = this.normCode(item.codigo);
+    return this.criticalData().find((n) => this.normCode(n.codigo) === target);
+  }
+
+  impactoCadena(item: CurriculumItem): number {
+    return this.criticalNode(item)?.impactoCadena ?? 0;
+  }
+
+  /** Enfoca una materia: resalta su cadena descendente. */
+  focusCritical(item: CurriculumItem): void {
+    const node = this.criticalNode(item);
+    if (!node) return;
+    this.focusCode.set(item.codigo);
+    this.highlightedNorm.set(
+      new Set(node.descendientes.map((c) => this.normCode(c))),
+    );
+  }
+
+  isHighlighted(item: CurriculumItem): boolean {
+    return this.highlightedNorm().has(this.normCode(item.codigo));
+  }
+
+  isFocus(item: CurriculumItem): boolean {
+    return (
+      this.focusCode() !== null &&
+      this.normCode(this.focusCode()!) === this.normCode(item.codigo)
+    );
+  }
+
+  /** Materias que desbloquea (nombres completos) — para el drawer. */
+  desbloquea(item: CurriculumItem): { codigo: string; nombre: string }[] {
+    const node = this.criticalNode(item);
+    if (!node) return [];
+    return node.descendientes.map((code) => {
+      const norm = this.normCode(code);
+      const found = this.items().find((i) => this.normCode(i.codigo) === norm);
+      return {
+        codigo: code,
+        nombre: found?.nombre ?? (this.resolveName(code) || code),
+      };
+    });
+  }
+
+  /** ¿La materia está en el camino crítico hacia Proyecto de Grado? */
+  enCaminoAGrado(item: CurriculumItem): boolean {
+    const node = this.criticalNode(item);
+    if (!node) return false;
+    return node.descendientes.some((c) => this.normCode(c) === this.normCode('ISIS-3007'));
+  }
+
+  /** Al abrir detalle, asegura datos de ruta crítica para el drawer. */
+  openDetailWithCritical(item: CurriculumItem): void {
+    this.ensureCriticalData();
+    if (this.criticalMode()) {
+      this.focusCritical(item);
+    }
+    this.openDetail(item);
+  }
 }

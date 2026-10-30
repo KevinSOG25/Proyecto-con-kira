@@ -74,3 +74,15 @@ export class UpdateCurriculumItemDto {
   @IsString({ each: true })
   prerrequisitos?: string[];
 }
+
+/**
+ * Entrada para simular el próximo semestre. Se pueden pasar explícitamente
+ * los códigos aprobados; si se omiten, el backend no asume ninguno y el
+ * frontend suele enviar aprobadas + en curso.
+ */
+export class SimulateNextSemesterDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aprobadas?: string[];
+}

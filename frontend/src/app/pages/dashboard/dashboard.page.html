@@ -153,6 +153,72 @@
     </div>
   }
 
+  <!-- Matriz de Retorno de Esfuerzo -->
+  @if (d.effortMatrix.length) {
+    <div class="card mt-4 effort-card">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-1">
+          <h5 class="card-title mb-0">🎯 Matriz de Retorno de Esfuerzo · Priorizador de Estudio</h5>
+          <span class="badge rounded-pill bg-accent-soft">{{ d.totalCreditosMatriculados }} créditos matriculados</span>
+        </div>
+        <p class="text-muted small mb-3">
+          Dónde conviene invertir tus horas: impacto real de cada evaluación pendiente sobre tu promedio semestral.
+        </p>
+
+        <div class="effort-list">
+          @for (it of d.effortMatrix; track it.corteId) {
+            <div class="effort-item">
+              <div class="effort-main">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="effort-prio" [class]="prioridadClass(it.nivelPrioridad)">
+                    {{ prioridadLabel(it.nivelPrioridad) }}
+                  </span>
+                  <strong class="effort-materia">{{ it.materiaNombre }}</strong>
+                  @if (it.codigo) {
+                    <span class="effort-code tabular-nums">{{ normalizeCode(it.codigo, '') }}</span>
+                  }
+                </div>
+                <div class="effort-corte">
+                  <span class="pill pill-weight tabular-nums">{{ it.nombreCorte }} · {{ it.porcentaje }}%</span>
+                  @if (it.diasRestantes !== null) {
+                    <span class="effort-dias" [class.soon]="it.diasRestantes <= 3">
+                      {{ diasLabel(it.diasRestantes) }}
+                    </span>
+                  }
+                </div>
+                <div class="effort-impacto tabular-nums">
+                  <span class="impacto-pill">+{{ it.impactoMaximoPromedio | number: '1.2-2' }} pts al promedio con 5.0</span>
+                  <span class="text-muted small">· +{{ (it.sensibilidadDecima * 10) | number: '1.2-2' }} por cada 1.0 de nota</span>
+                </div>
+                <div class="effort-motivo text-muted small">{{ it.motivo }}</div>
+              </div>
+
+              <!-- Micro-simulador -->
+              <div class="effort-sim">
+                <label class="form-label small mb-1">
+                  Nota esperada:
+                  <strong class="tabular-nums">{{ simNota(it.corteId) | number: '1.1-1' }}</strong>
+                </label>
+                <input
+                  type="range"
+                  class="form-range"
+                  min="0" max="5" step="0.1"
+                  [ngModel]="simNota(it.corteId)"
+                  (ngModelChange)="setSimNota(it.corteId, $event)"
+                />
+                <div class="effort-sim-result">
+                  Promedio proyectado:
+                  <strong class="tabular-nums">{{ promedioProyectado(it) | number: '1.2-2' }}</strong>
+                  <span class="effort-delta tabular-nums">(+{{ impactoSimulado(it) | number: '1.2-2' }})</span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Semáforo de riesgo -->
   <div class="d-flex align-items-center justify-content-between mt-4 mb-3">
     <h5 class="mb-0">Semáforo de riesgo</h5>

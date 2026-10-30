@@ -167,14 +167,36 @@ export interface UpcomingEvaluation {
   temas: string[];
 }
 
+export type PriorityLevel = 'CRITICA' | 'ALTA' | 'MEDIA' | 'BAJA';
+
+export interface EffortMatrixItem {
+  corteId: string;
+  materiaId: string;
+  materiaNombre: string;
+  codigo: string | null;
+  nombreCorte: string;
+  porcentaje: number;
+  creditos: number;
+  fecha: string | null;
+  diasRestantes: number | null;
+  riskLevel: RiskLevel;
+  impactoMaximoPromedio: number;
+  sensibilidadDecima: number;
+  scorePrioridad: number;
+  nivelPrioridad: PriorityLevel;
+  motivo: string;
+}
+
 export interface DashboardAnalytics {
   promedioPonderadoActual: number;
   promedioAcumuladoNeto: number;
   promedioPonderadoSemestral: number;
   totalCreditos: number;
+  totalCreditosMatriculados: number;
   totalMaterias: number;
   materias: SubjectGrade[];
   proximasEvaluaciones: UpcomingEvaluation[];
+  effortMatrix: EffortMatrixItem[];
 }
 
 /** ---- Pensum (malla curricular) ---- */
@@ -208,6 +230,21 @@ export interface CreateCurriculumItem {
 }
 
 export type UpdateCurriculumItem = Partial<Omit<CreateCurriculumItem, 'orden'>>;
+
+export interface SimulateNextSemesterResult {
+  elegibles: CurriculumItem[];
+  totalElegibles: number;
+  creditosSugeridos: number;
+  aprobadasConsideradas: string[];
+}
+
+export interface CriticalPathNode {
+  codigo: string;
+  nombre: string;
+  impactoCadena: number;
+  dependientesDirectos: string[];
+  descendientes: string[];
+}
 
 /** ---- Importación de syllabus ---- */
 export interface ImportSubjectPayload {
