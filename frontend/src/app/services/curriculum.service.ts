@@ -4,8 +4,10 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   CreateCurriculumItem,
+  CriticalPathNode,
   CurriculumItem,
   CurriculumResponse,
+  SimulateNextSemesterResult,
   UpdateCurriculumItem,
 } from '../models/api.models';
 
@@ -32,5 +34,16 @@ export class CurriculumService {
 
   restore(): Observable<CurriculumResponse> {
     return this.http.post<CurriculumResponse>(`${this.base}/restore`, {});
+  }
+
+  simulateNextSemester(aprobadas: string[]): Observable<SimulateNextSemesterResult> {
+    return this.http.post<SimulateNextSemesterResult>(
+      `${this.base}/simulate-next-semester`,
+      { aprobadas },
+    );
+  }
+
+  criticalPath(): Observable<CriticalPathNode[]> {
+    return this.http.get<CriticalPathNode[]>(`${this.base}/critical-path`);
   }
 }

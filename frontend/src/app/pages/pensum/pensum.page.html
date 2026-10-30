@@ -1,15 +1,51 @@
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div>
     <h2 class="page-title mb-1">Pensum</h2>
     <p class="text-muted mb-0">Malla curricular — Ingeniería de Sistemas y Computación.</p>
   </div>
-  <button class="btn btn-outline-primary btn-sm" (click)="restore()" [disabled]="restoring()">
+  <button class="btn btn-outline-secondary btn-sm" (click)="restore()" [disabled]="restoring()">
     @if (restoring()) {
       <span class="spinner-border spinner-border-sm me-1"></span> Restaurando…
     } @else {
       ↺ Restaurar pensum original
     }
   </button>
+</div>
+
+<!-- Barra de acciones: proyección y ruta crítica -->
+<div class="pensum-actions mb-4">
+  <button
+    class="btn btn-sm"
+    [class.btn-primary]="projectionMode()"
+    [class.btn-outline-primary]="!projectionMode()"
+    [disabled]="projecting()"
+    (click)="toggleProjection()"
+  >
+    @if (projecting()) {
+      <span class="spinner-border spinner-border-sm me-1"></span> Proyectando…
+    } @else if (projectionMode()) {
+      ✓ Proyección activa
+    } @else {
+      🔮 Proyectar próximo semestre
+    }
+  </button>
+
+  <button
+    class="btn btn-sm"
+    [class.btn-primary]="criticalMode()"
+    [class.btn-outline-primary]="!criticalMode()"
+    (click)="toggleCriticalMode()"
+  >
+    {{ criticalMode() ? '✓ Modo ruta crítica' : '🧭 Modo ruta crítica' }}
+  </button>
+
+  @if (criticalMode() && focusCode()) {
+    <span class="text-muted small align-self-center">
+      Mostrando dependientes de <strong>{{ focusCode() }}</strong> · toca una tarjeta para cambiar
+    </span>
+  } @else if (criticalMode()) {
+    <span class="text-muted small align-self-center">Toca una materia para ver qué desbloquea</span>
+  }
 </div>
 
 @if (error()) {
@@ -35,14 +71,26 @@
             type="button"
             class="pensum-card"
             [class]="areaClass(item.area)"
+            [class.is-eligible]="isElegible(item)"
+            [class.is-highlighted]="criticalMode() && isHighlighted(item)"
+            [class.is-focus]="criticalMode() && isFocus(item)"
+            [class.is-dimmed]="criticalMode() && focusCode() && !isHighlighted(item) && !isFocus(item)"
             [attr.data-status]="statusOf(item)"
-            (click)="openDetail(item)"
+            (click)="criticalMode() ? focusCritical(item) : openDetailWithCritical(item)"
           >
             <div class="pensum-card-top">
               <span class="pensum-code tabular-nums">{{ item.codigo }}</span>
               <span class="pensum-cred tabular-nums">{{ item.creditos }} cr</span>
             </div>
             <div class="pensum-name">{{ item.nombre }}</div>
+
+            @if (isElegible(item)) {
+              <span class="eligible-badge">✦ Elegible para matrícula</span>
+            }
+            @if (criticalMode() && impactoCadena(item) > 0) {
+              <span class="critical-badge">Bloquea {{ impactoCadena(item) }} materias futuras</span>
+            }
+
             <div class="pensum-card-foot">
               <span class="status-dot" [attr.data-status]="statusOf(item)"></span>
               <span class="status-text">{{ statusLabel(statusOf(item)) }}</span>
@@ -55,7 +103,7 @@
   </div>
 
   <!-- Banner de reglas generales -->
-  <div class="card rules-card mt-4">
+  <div class="card rules-card mt-4" [class.mb-5]="projectionMode()">
     <div class="card-body">
       <h6 class="fw-bold mb-2">📋 Reglas generales del programa</h6>
       <ol class="rules-list mb-0">
@@ -64,6 +112,18 @@
         <li>Las materias de nivel 4 tienen como prerrequisito <code>ISIS-2011</code> o <code>ISIS-2007</code>.</li>
       </ol>
     </div>
+  </div>
+}
+
+<!-- Barra flotante de proyección -->
+@if (projectionMode()) {
+  <div class="projection-bar">
+    <span class="projection-icon">🔮</span>
+    <span class="projection-text tabular-nums">
+      <strong>{{ elegiblesCount() }}</strong> materias desbloqueadas ·
+      <strong>{{ creditosSugeridos() }}</strong> créditos sugeridos para tu próximo semestre
+    </span>
+    <button class="btn btn-sm btn-light ms-auto" (click)="toggleProjection()">Salir de proyección</button>
   </div>
 }
 
@@ -127,6 +187,34 @@
                       }
                     </div>
                   }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <!-- Materias que desbloquea -->
+        <div class="mt-4">
+          <h6 class="fw-bold mb-2">
+            Materias que desbloquea al aprobar
+            @if (impactoCadena(item) > 0) {
+              <span class="unlock-count tabular-nums">{{ impactoCadena(item) }}</span>
+            }
+          </h6>
+          @if (enCaminoAGrado(item)) {
+            <div class="grado-alert">
+              ⚠️ Esta materia está en el <strong>camino crítico hacia Proyecto de Grado</strong> (ISIS-3007).
+              Un atraso aquí puede retrasar tu graduación.
+            </div>
+          }
+          @if (desbloquea(item).length === 0) {
+            <p class="text-muted small mb-0">No desbloquea materias posteriores (es una hoja del plan).</p>
+          } @else {
+            <ul class="unlock-list">
+              @for (d of desbloquea(item); track d.codigo) {
+                <li>
+                  <span class="unlock-code tabular-nums">{{ d.codigo }}</span>
+                  <span class="unlock-name">{{ d.nombre }}</span>
                 </li>
               }
             </ul>

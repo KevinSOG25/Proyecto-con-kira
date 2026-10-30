@@ -51,6 +51,31 @@ export interface UpcomingEvaluation {
   temas: string[];
 }
 
+/** Nivel de prioridad de un corte en la Matriz de Retorno de Esfuerzo. */
+export type PriorityLevel = 'CRITICA' | 'ALTA' | 'MEDIA' | 'BAJA';
+
+/** Ítem de la Matriz de Retorno de Esfuerzo (corte pendiente priorizado). */
+export interface EffortMatrixItem {
+  corteId: string;
+  materiaId: string;
+  materiaNombre: string;
+  codigo: string | null;
+  nombreCorte: string;
+  porcentaje: number;
+  creditos: number;
+  fecha: string | null;
+  diasRestantes: number | null;
+  riskLevel: RiskLevel;
+  /** Aporte máximo al promedio semestral si saca 5.0 en este corte. */
+  impactoMaximoPromedio: number;
+  /** Cuánto suma al promedio semestral cada 0.1 adicional en este corte. */
+  sensibilidadDecima: number;
+  /** Score interno de apalancamiento (para ordenar). */
+  scorePrioridad: number;
+  nivelPrioridad: PriorityLevel;
+  motivo: string;
+}
+
 export interface DashboardAnalytics {
   /**
    * Promedio ponderado ACTUAL del semestre, usando la nota relativa a lo
@@ -68,9 +93,13 @@ export interface DashboardAnalytics {
    */
   promedioPonderadoSemestral: number;
   totalCreditos: number;
+  /** Total de créditos matriculados (todas las materias, denominador del PGA). */
+  totalCreditosMatriculados: number;
   totalMaterias: number;
   materias: SubjectGrade[];
   proximasEvaluaciones: UpcomingEvaluation[];
+  /** Matriz de retorno de esfuerzo: cortes pendientes ordenados por apalancamiento. */
+  effortMatrix: EffortMatrixItem[];
 }
 
 @Injectable()
@@ -140,6 +169,20 @@ export class AnalyticsService {
     const materias: SubjectGrade[] = [];
     const proximasEvaluaciones: UpcomingEvaluation[] = [];
 
+    // Total de créditos matriculados = todas las materias (denominador del PGA).
+    const totalCreditosMatriculados = subjects.reduce(
+      (acc, s) => acc + (this.toNumber(s.creditos) ?? 0),
+      0,
+    );
+
+    // Cortes pendientes (sin nota) para construir la matriz de esfuerzo.
+    interface PendingCut {
+      grade: Grade;
+      subject: Subject;
+      riskLevel: RiskLevel;
+    }
+    const pendingCuts: PendingCut[] = [];
+
     for (const subject of subjects) {
       const grades = await this.gradesRepo.find({
         where: { materiaId: subject.id },
@@ -180,7 +223,6 @@ export class AnalyticsService {
       const notaAcumulada = Number(notaFinal.toFixed(2));
       const porcentajeRestante = Math.max(0, 100 - porcentajeEvaluado);
 
-      // Nota relativa a lo evaluado (lo que llevas "sobre lo visto").
       const notaActualRelativa =
         porcentajeEvaluado > 0
           ? Number((notaAcumulada / (porcentajeEvaluado / 100)).toFixed(2))
@@ -205,6 +247,13 @@ export class AnalyticsService {
         riskLevel,
         completa: porcentajeTotal > 0 && porcentajeEvaluado >= porcentajeTotal,
       });
+
+      // Acumula cortes sin calificar de esta materia para la matriz.
+      for (const g of grades) {
+        if (this.toNumber(g.calificacionObtenida) === null) {
+          pendingCuts.push({ grade: g, subject, riskLevel });
+        }
+      }
     }
 
     // Promedios ponderados por créditos, solo materias con algo evaluado.
@@ -224,17 +273,126 @@ export class AnalyticsService {
     const promedioAcumuladoNeto =
       sumaCreditos > 0 ? Number((sumaNeta / sumaCreditos).toFixed(2)) : 0;
 
-    // Ordenar próximas evaluaciones de la más cercana a la más lejana.
     proximasEvaluaciones.sort((a, b) => a.diasRestantes - b.diasRestantes);
+
+    const effortMatrix = this.buildEffortMatrix(
+      pendingCuts,
+      totalCreditosMatriculados,
+    );
 
     return {
       promedioPonderadoActual,
       promedioAcumuladoNeto,
       promedioPonderadoSemestral: promedioAcumuladoNeto, // alias retrocompatible
       totalCreditos: sumaCreditos,
+      totalCreditosMatriculados,
       totalMaterias: materias.length,
       materias,
       proximasEvaluaciones,
+      effortMatrix,
     };
+  }
+
+  /**
+   * Construye la Matriz de Retorno de Esfuerzo: para cada corte pendiente
+   * calcula su impacto marginal sobre el Promedio Ponderado Semestral y un
+   * score de apalancamiento que combina impacto, urgencia y riesgo.
+   */
+  private buildEffortMatrix(
+    pendingCuts: {
+      grade: Grade;
+      subject: Subject;
+      riskLevel: RiskLevel;
+    }[],
+    totalCreditosMatriculados: number,
+  ): EffortMatrixItem[] {
+    if (totalCreditosMatriculados <= 0) return [];
+
+    const items: EffortMatrixItem[] = pendingCuts.map(
+      ({ grade, subject, riskLevel }) => {
+        const creditos = this.toNumber(subject.creditos) ?? 0;
+        const peso = this.toNumber(grade.porcentaje) ?? 0;
+
+        // Aporte máximo al promedio semestral si obtiene 5.0 en este corte.
+        const impactoMaximoPromedio =
+          (creditos * (peso / 100) * 5.0) / totalCreditosMatriculados;
+        // Sensibilidad: cuánto suma cada 0.1 adicional de nota.
+        const sensibilidadDecima =
+          (creditos * (peso / 100) * 0.1) / totalCreditosMatriculados;
+
+        const diasRestantes = grade.fecha ? this.diffDays(grade.fecha) : null;
+
+        // --- Score de apalancamiento ---
+        // 1) Impacto (normalizado): el propio impacto máximo es la base.
+        const impactoScore = impactoMaximoPromedio;
+
+        // 2) Urgencia temporal: fechas próximas valen más. Sin fecha => neutro.
+        let urgenciaMult = 1;
+        if (diasRestantes !== null) {
+          if (diasRestantes <= 2) urgenciaMult = 2.0;
+          else if (diasRestantes <= 5) urgenciaMult = 1.6;
+          else if (diasRestantes <= 10) urgenciaMult = 1.3;
+          else if (diasRestantes <= 20) urgenciaMult = 1.1;
+          else urgenciaMult = 1.0;
+        }
+
+        // 3) Riesgo de la materia: DANGER/WARNING incrementan prioridad.
+        let riesgoMult = 1;
+        if (riskLevel === 'DANGER') riesgoMult = 1.8;
+        else if (riskLevel === 'WARNING') riesgoMult = 1.35;
+
+        const scorePrioridad = impactoScore * urgenciaMult * riesgoMult;
+
+        return {
+          corteId: grade.id,
+          materiaId: subject.id,
+          materiaNombre: subject.nombre,
+          codigo: subject.codigo ?? null,
+          nombreCorte: grade.nombreCorte,
+          porcentaje: peso,
+          creditos,
+          fecha: grade.fecha ?? null,
+          diasRestantes,
+          riskLevel,
+          impactoMaximoPromedio: Number(impactoMaximoPromedio.toFixed(4)),
+          sensibilidadDecima: Number(sensibilidadDecima.toFixed(4)),
+          scorePrioridad: Number(scorePrioridad.toFixed(6)),
+          nivelPrioridad: 'BAJA',
+          motivo: '',
+        };
+      },
+    );
+
+    // Ordenar de mayor a menor apalancamiento.
+    items.sort((a, b) => b.scorePrioridad - a.scorePrioridad);
+
+    // Clasificar niveles por cuartiles del score + razones legibles.
+    const maxScore = items.length ? items[0].scorePrioridad : 0;
+    for (const it of items) {
+      const ratio = maxScore > 0 ? it.scorePrioridad / maxScore : 0;
+      if (ratio >= 0.75) it.nivelPrioridad = 'CRITICA';
+      else if (ratio >= 0.5) it.nivelPrioridad = 'ALTA';
+      else if (ratio >= 0.25) it.nivelPrioridad = 'MEDIA';
+      else it.nivelPrioridad = 'BAJA';
+
+      it.motivo = this.motivoPrioridad(it);
+    }
+
+    return items;
+  }
+
+  /** Genera una razón legible del nivel de prioridad. */
+  private motivoPrioridad(it: EffortMatrixItem): string {
+    const partes: string[] = [];
+    partes.push(
+      `Vale hasta +${it.impactoMaximoPromedio.toFixed(2)} pts del promedio`,
+    );
+    if (it.riskLevel === 'DANGER') partes.push('materia en riesgo alto');
+    else if (it.riskLevel === 'WARNING') partes.push('materia en riesgo medio');
+    if (it.diasRestantes !== null) {
+      if (it.diasRestantes <= 2) partes.push('examen inminente');
+      else if (it.diasRestantes <= 5) partes.push('fecha próxima');
+    }
+    return partes.join(' · ');
   }
 }
