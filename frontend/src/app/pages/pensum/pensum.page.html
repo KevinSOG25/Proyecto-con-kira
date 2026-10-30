@@ -674,7 +674,14 @@
     <div class="ai-modal-head">
       <div class="d-flex align-items-center gap-2">
         <span class="ai-spark">✨</span>
-        <h5 class="mb-0">Proyección del próximo semestre</h5>
+        <div>
+          <h5 class="mb-0">Proyección del próximo semestre</h5>
+          @if (aiProjection(); as proj) {
+            <span class="ai-provider-tag" [class]="providerClass(proj.provider)">
+              {{ providerLabel(proj.provider) }}
+            </span>
+          }
+        </div>
       </div>
       <button class="btn-icon" (click)="closeAiModal()" aria-label="Cerrar">✕</button>
     </div>
@@ -692,7 +699,7 @@
             <span class="text-muted small">· objetivo {{ proj.creditosObjetivo }}</span>
           }
           @if (proj.generadoPorIA) {
-            <span class="ai-badge">Generado por Gemini</span>
+            <span class="ai-badge">Generado por {{ proj.provider || 'Gemini' }}</span>
           }
         </div>
 

@@ -259,6 +259,8 @@ export interface GeminiProjection {
   creditosObjetivo?: number;
   justificacion: string;
   generadoPorIA: boolean;
+  /** Proveedor que resolvió la consulta: 'Gemini' | 'Groq' | 'Respaldo'. */
+  provider?: 'Gemini' | 'Groq' | 'Respaldo';
 }
 
 /** ---- Catálogo DISC (posgrado / coterminal) ---- */

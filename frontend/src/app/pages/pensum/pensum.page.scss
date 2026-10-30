@@ -892,3 +892,25 @@
   border-radius: 999px;
   padding: 0.05rem 0.4rem;
 }
+
+/* ---------- Tag de proveedor en el modal de proyección ---------- */
+.ai-provider-tag {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+}
+.ai-provider-tag.prov-gemini {
+  background: var(--as-accent-soft);
+  color: var(--as-accent-strong);
+}
+.ai-provider-tag.prov-groq {
+  background: var(--as-warning-soft);
+  color: #92600a;
+}
+.ai-provider-tag.prov-respaldo {
+  background: var(--as-surface-sunken);
+  color: var(--as-text-muted);
+}
