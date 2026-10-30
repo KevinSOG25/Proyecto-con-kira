@@ -9,6 +9,9 @@ import {
   CriticalPathNode,
   CurriculumItem,
   CurriculumStatus,
+  DegreeAuditResponse,
+  DegreeProgress,
+  DegreeAuditState,
   SimulateNextSemesterResult,
   Subject,
 } from '../../models/api.models';
@@ -87,6 +90,8 @@ export class PensumPage implements OnInit {
           this.items.set(res.items);
           this.creditosPorSemestre.set(res.creditosPorSemestre);
           this.equivalencias.set(res.equivalencias);
+          // Carga el auditor una vez que el pensum (y sus estados) están listos.
+          this.loadAudit();
         },
         error: (err) =>
           this.error.set(
@@ -145,6 +150,8 @@ export class PensumPage implements OnInit {
   setStatus(item: CurriculumItem, status: CurriculumStatus): void {
     this.manualStatus.update((cur) => ({ ...cur, [item.codigo]: status }));
     this.persistManualStatus();
+    // Recalcula el progreso de grado con los nuevos estados de aprobación.
+    this.refreshProgress();
   }
 
   private loadManualStatus(): Record<string, CurriculumStatus> {
@@ -480,5 +487,109 @@ export class PensumPage implements OnInit {
       this.focusCritical(item);
     }
     this.openDetail(item);
+  }
+
+  // ============================================================
+  //  Auditor de grado
+  // ============================================================
+  auditOpen = signal(true);
+  audit = signal<DegreeAuditState | null>(null);
+  progreso = signal<DegreeProgress | null>(null);
+  savingAudit = signal(false);
+
+  /** Códigos de materias aprobadas (según estado efectivo del pensum). */
+  private codigosAprobados(): string[] {
+    return this.items()
+      .filter((i) => this.statusOf(i) === 'aprobada')
+      .map((i) => i.codigo);
+  }
+
+  /** Materias disponibles para asignar a Cursos Tipo E / Épsilon. */
+  materiasAsignables(): CurriculumItem[] {
+    return this.items().filter((i) => {
+      const st = this.statusOf(i);
+      return st === 'aprobada' || st === 'en_curso';
+    });
+  }
+
+  toggleAudit(): void {
+    this.auditOpen.update((v) => !v);
+  }
+
+  loadAudit(): void {
+    this.curriculumService.getDegreeAudit(this.codigosAprobados()).subscribe({
+      next: (res: DegreeAuditResponse) => {
+        this.audit.set(res.audit);
+        this.progreso.set(res.progreso);
+      },
+      error: () => {
+        /* el auditor es opcional; no bloquea la vista del pensum */
+      },
+    });
+  }
+
+  /** Recalcula el progreso (sin cambiar requisitos) tras cambiar estados. */
+  refreshProgress(): void {
+    this.loadAudit();
+  }
+
+  private patchAudit(patch: Partial<DegreeAuditState>): void {
+    this.savingAudit.set(true);
+    this.curriculumService
+      .updateDegreeAudit({ ...patch, aprobadas: this.codigosAprobados() })
+      .pipe(finalize(() => this.savingAudit.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.audit.set(res.audit);
+          this.progreso.set(res.progreso);
+        },
+        error: (err) =>
+          this.error.set(
+            extractHttpErrorMessage(err, 'No se pudo actualizar el auditor de grado.'),
+          ),
+      });
+  }
+
+  toggleRlec(): void {
+    this.patchAudit({ rlecAprobado: !this.audit()?.rlecAprobado });
+  }
+  toggleRidi(): void {
+    this.patchAudit({ ridiAprobado: !this.audit()?.ridiAprobado });
+  }
+  toggleInternacionalizacion(): void {
+    this.patchAudit({
+      internacionalizacion: !this.audit()?.internacionalizacion,
+    });
+  }
+  setCursoTipoE1(codigo: string): void {
+    this.patchAudit({ cursoTipoE1: codigo || null });
+  }
+  setCursoTipoE2(codigo: string): void {
+    this.patchAudit({ cursoTipoE2: codigo || null });
+  }
+  setCursoTipoEpsilon(codigo: string): void {
+    this.patchAudit({ cursoTipoEpsilon: codigo || null });
+  }
+
+  /** Asigna la materia abierta en el drawer a un requisito Tipo E / Épsilon. */
+  acreditarComo(tipo: 'e1' | 'e2' | 'epsilon', item: CurriculumItem): void {
+    if (tipo === 'e1') this.setCursoTipoE1(item.codigo);
+    else if (tipo === 'e2') this.setCursoTipoE2(item.codigo);
+    else this.setCursoTipoEpsilon(item.codigo);
+  }
+
+  acreditaE1(item: CurriculumItem): boolean {
+    return this.audit()?.cursoTipoE1 === item.codigo;
+  }
+  acreditaE2(item: CurriculumItem): boolean {
+    return this.audit()?.cursoTipoE2 === item.codigo;
+  }
+  acreditaEpsilon(item: CurriculumItem): boolean {
+    return this.audit()?.cursoTipoEpsilon === item.codigo;
+  }
+
+  /** Semáforo de elegibilidad de grado. */
+  elegibleGrado(): boolean {
+    return this.progreso()?.elegibleProyectoGrado ?? false;
   }
 }

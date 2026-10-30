@@ -23,6 +23,9 @@ export const CODIGO_EQUIVALENCIAS: Record<string, string> = {
   'FISI-1528': 'Física Experimental II',
 };
 
+/** Créditos totales del programa para graduarse. */
+export const CREDITOS_TOTALES = 134;
+
 /** Créditos por semestre (para encabezados de columnas). */
 export const CREDITOS_POR_SEMESTRE: Record<number, number> = {
   1: 16,

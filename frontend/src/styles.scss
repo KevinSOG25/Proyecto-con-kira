@@ -48,11 +48,64 @@
 
   /* Anillo de foco */
   --as-ring: 0 0 0 3px rgba(139, 92, 246, 0.18);
+
+  /* Navbar translúcido (se adapta en dark) */
+  --as-navbar-bg: rgba(255, 255, 255, 0.85);
+}
+
+/* ============================================================
+   Modo oscuro — se activa con la clase .dark en <html>
+   Sobrescribe las variables del sistema de diseño.
+   ============================================================ */
+html.dark {
+  --as-bg: #09090b;              /* zinc-950 */
+  --as-surface: #18181b;         /* zinc-900 */
+  --as-surface-alt: #1c1c1f;
+  --as-surface-sunken: #27272a;  /* zinc-800 */
+  --as-text: #f1f5f9;            /* slate-100 */
+  --as-text-muted: #a1a1aa;      /* zinc-400 */
+  --as-text-subtle: #71717a;     /* zinc-500 */
+  --as-border: #27272a;          /* zinc-800 */
+  --as-border-strong: #3f3f46;   /* zinc-700 */
+
+  --as-accent: #a78bfa;          /* violeta luminiscente */
+  --as-accent-strong: #c4b5fd;
+  --as-accent-soft: rgba(139, 92, 246, 0.16);
+  --as-accent-2: #818cf8;
+  --as-gradient: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  --as-gradient-hover: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+
+  --as-success: #34d399;         /* emerald-400 */
+  --as-success-soft: rgba(16, 185, 129, 0.14);
+  --as-danger: #f87171;
+  --as-danger-soft: rgba(239, 68, 68, 0.15);
+  --as-warning: #fbbf24;
+  --as-warning-soft: rgba(245, 158, 11, 0.15);
+  --as-info: #38bdf8;
+
+  --as-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --as-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --as-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55), 0 2px 4px rgba(0, 0, 0, 0.4);
+  --as-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.45);
+
+  --as-ring: 0 0 0 3px rgba(167, 139, 250, 0.3);
+  --as-navbar-bg: rgba(9, 9, 11, 0.8);
 }
 
 html,
 body {
   height: 100%;
+}
+
+/* Transición suave al cambiar de tema. */
+body,
+.card,
+.navbar.app-navbar,
+.form-control,
+.form-select,
+.btn {
+  transition: background-color 0.25s ease, color 0.25s ease,
+    border-color 0.25s ease;
 }
 
 body {
@@ -232,7 +285,7 @@ h1, h2, h3, h4, h5, h6,
 
 /* ---------- Navbar flotante translúcido ---------- */
 .navbar.app-navbar {
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: var(--as-navbar-bg) !important;
   backdrop-filter: saturate(180%) blur(12px);
   -webkit-backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid var(--as-border);
@@ -379,4 +432,89 @@ h1, h2, h3, h4, h5, h6,
 /* Utilidad de acento */
 .text-accent {
   color: var(--as-accent-strong) !important;
+}
+
+/* ============================================================
+   Ajustes específicos de modo oscuro para componentes Bootstrap
+   que no derivan de las variables del sistema de diseño.
+   ============================================================ */
+html.dark {
+  .table {
+    --bs-table-color: var(--as-text);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--as-border);
+  }
+  .table thead th {
+    color: var(--as-text-subtle);
+    border-bottom-color: var(--as-border);
+  }
+
+  .accordion {
+    --bs-accordion-bg: var(--as-surface);
+    --bs-accordion-color: var(--as-text);
+    --bs-accordion-border-color: var(--as-border);
+    --bs-accordion-btn-color: var(--as-text);
+    --bs-accordion-active-color: var(--as-accent-strong);
+    --bs-accordion-active-bg: var(--as-accent-soft);
+  }
+
+  .btn-light {
+    background: var(--as-surface-sunken);
+    border-color: var(--as-border);
+    color: var(--as-accent-strong);
+  }
+
+  .btn-outline-secondary {
+    color: var(--as-text-muted);
+    border-color: var(--as-border-strong);
+  }
+  .btn-outline-secondary:hover {
+    background: var(--as-surface-sunken);
+    color: var(--as-text);
+  }
+
+  .badge.bg-light {
+    background: var(--as-surface-sunken) !important;
+    color: var(--as-text-muted) !important;
+  }
+
+  /* Bordes rojos de outline-danger más suaves en oscuro. */
+  .btn-outline-danger {
+    border-color: rgba(248, 113, 113, 0.5);
+  }
+  .btn-icon.btn-icon-danger:hover {
+    border-color: rgba(248, 113, 113, 0.6);
+  }
+
+  /* Inputs tipo range con acento. */
+  .form-range {
+    accent-color: var(--as-accent);
+  }
+}
+
+/* Botón circular de tema (sol/luna) en la navbar. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--as-border);
+  background: var(--as-surface);
+  color: var(--as-text-muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    transform 0.2s ease;
+}
+.theme-toggle:hover {
+  color: var(--as-accent-strong);
+  border-color: var(--as-accent);
+  transform: translateY(-1px);
+}
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }

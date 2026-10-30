@@ -8,14 +8,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CurriculumItem } from './entities/curriculum-item.entity';
+import { DegreeAudit } from './entities/degree-audit.entity';
+import { UserTokens } from '../auth/entities/user-tokens.entity';
 import {
   CODIGO_EQUIVALENCIAS,
   CREDITOS_POR_SEMESTRE,
+  CREDITOS_TOTALES,
   CURRICULUM_SEED,
 } from './curriculum.seed';
 import {
   CreateCurriculumItemDto,
   UpdateCurriculumItemDto,
+  UpdateDegreeAuditDto,
 } from './dto/curriculum.dto';
 
 @Injectable()
@@ -25,6 +29,10 @@ export class CurriculumService implements OnModuleInit {
   constructor(
     @InjectRepository(CurriculumItem)
     private readonly repo: Repository<CurriculumItem>,
+    @InjectRepository(DegreeAudit)
+    private readonly auditRepo: Repository<DegreeAudit>,
+    @InjectRepository(UserTokens)
+    private readonly tokensRepo: Repository<UserTokens>,
   ) {}
 
   /** Siembra el pensum la primera vez que arranca si la tabla está vacía. */
@@ -261,5 +269,112 @@ export class CurriculumService implements OnModuleInit {
     });
 
     return result;
+  }
+
+  // ============================================================
+  //  Auditor de grado (requisitos transversales + progreso)
+  // ============================================================
+
+  /** Resuelve el usuario autenticado (monousuario: primer token). */
+  private async resolveUser(): Promise<string> {
+    const record = await this.tokensRepo.findOne({
+      where: {},
+      order: { createdAt: 'ASC' },
+    });
+    // Si no hay sesión, usamos un identificador por defecto para no romper
+    // la funcionalidad local (el auditor es gestión personal del estudiante).
+    return record?.googleUserId ?? 'local-user';
+  }
+
+  /** Obtiene (o crea) la fila de auditoría del usuario. */
+  private async getOrCreateAudit(googleUserId: string): Promise<DegreeAudit> {
+    let audit = await this.auditRepo.findOne({ where: { googleUserId } });
+    if (!audit) {
+      audit = this.auditRepo.create({ googleUserId });
+      audit = await this.auditRepo.save(audit);
+    }
+    return audit;
+  }
+
+  /**
+   * Devuelve el auditor de grado: requisitos transversales + progreso global
+   * calculado con los códigos de materias aprobadas que envíe el frontend.
+   */
+  async getDegreeAudit(aprobadas: string[] = []) {
+    const googleUserId = await this.resolveUser();
+    const audit = await this.getOrCreateAudit(googleUserId);
+    const progreso = await this.computeProgress(aprobadas);
+    return { audit, progreso, creditosTotales: CREDITOS_TOTALES };
+  }
+
+  /** Actualiza los requisitos transversales y recalcula el progreso. */
+  async updateDegreeAudit(dto: UpdateDegreeAuditDto) {
+    const googleUserId = await this.resolveUser();
+    const audit = await this.getOrCreateAudit(googleUserId);
+
+    if (dto.rlecAprobado !== undefined) audit.rlecAprobado = dto.rlecAprobado;
+    if (dto.ridiAprobado !== undefined) audit.ridiAprobado = dto.ridiAprobado;
+    if (dto.cursoTipoE1 !== undefined) audit.cursoTipoE1 = dto.cursoTipoE1;
+    if (dto.cursoTipoE2 !== undefined) audit.cursoTipoE2 = dto.cursoTipoE2;
+    if (dto.cursoTipoEpsilon !== undefined)
+      audit.cursoTipoEpsilon = dto.cursoTipoEpsilon;
+    if (dto.internacionalizacion !== undefined)
+      audit.internacionalizacion = dto.internacionalizacion;
+
+    const saved = await this.auditRepo.save(audit);
+    const progreso = await this.computeProgress(dto.aprobadas ?? []);
+    return { audit: saved, progreso, creditosTotales: CREDITOS_TOTALES };
+  }
+
+  /**
+   * Calcula el progreso global de carrera con base en los códigos aprobados.
+   * - créditos aprobados / totales (134) y % de avance,
+   * - conteo de CBUs y CLEs completados,
+   * - elegibilidad para Proyecto de Grado (nivel 1 y 2 aprobados).
+   */
+  private async computeProgress(aprobadas: string[]) {
+    const allItems = await this.repo.find();
+    const aprobadasNorm = new Set((aprobadas ?? []).map((c) => this.normCode(c)));
+
+    const esAprobada = (item: CurriculumItem) =>
+      aprobadasNorm.has(this.normCode(item.codigo));
+
+    const creditosAprobados = allItems
+      .filter(esAprobada)
+      .reduce((acc, i) => acc + i.creditos, 0);
+
+    const porcentajeAvance = Number(
+      ((creditosAprobados / CREDITOS_TOTALES) * 100).toFixed(1),
+    );
+
+    // CBUs: códigos que empiezan por CBU, CBCC, CBPC, CBCA, CBCO.
+    const esCBU = (c: string) =>
+      /^(CBU|CBCC|CBPC|CBCA|CBCO)/i.test(c.replace(/[-\s]/g, ''));
+    const cbus = allItems.filter((i) => esCBU(i.codigo));
+    const cbusCompletados = cbus.filter(esAprobada).length;
+
+    // CLEs 1..6.
+    const esCLE = (c: string) => /^CLE/i.test(c.replace(/[-\s]/g, ''));
+    const cles = allItems.filter((i) => esCLE(i.codigo));
+    const clesCompletados = cles.filter(esAprobada).length;
+
+    // Elegibilidad Proyecto de Grado: nivel 1 y 2 aprobados.
+    const nivel12 = allItems.filter((i) => i.semestre === 1 || i.semestre === 2);
+    const nivel12Aprobados = nivel12.filter(esAprobada).length;
+    const elegibleProyectoGrado =
+      nivel12.length > 0 && nivel12Aprobados === nivel12.length;
+
+    return {
+      creditosAprobados,
+      creditosTotales: CREDITOS_TOTALES,
+      porcentajeAvance,
+      cbusTotales: cbus.length,
+      cbusCompletados,
+      clesTotales: cles.length,
+      clesCompletados,
+      nivel12Totales: nivel12.length,
+      nivel12Aprobados,
+      elegibleProyectoGrado,
+    };
   }
 }

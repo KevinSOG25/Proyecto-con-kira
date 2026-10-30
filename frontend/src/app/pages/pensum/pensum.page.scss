@@ -430,3 +430,147 @@
 .unlock-name {
   color: var(--as-text-muted);
 }
+
+/* ---------- Auditor de grado ---------- */
+.audit-card {
+  overflow: hidden;
+}
+.audit-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--as-surface);
+  border: none;
+  cursor: pointer;
+  color: var(--as-text);
+}
+.audit-icon { font-size: 1.2rem; }
+.audit-pct {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--as-accent-strong);
+  background: var(--as-accent-soft);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+.audit-caret {
+  color: var(--as-text-subtle);
+  font-size: 0.8rem;
+}
+.grado-semaforo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+.grado-semaforo.ok {
+  background: var(--as-success-soft);
+  color: var(--as-success);
+}
+.grado-semaforo.no {
+  background: var(--as-surface-sunken);
+  color: var(--as-text-muted);
+}
+
+.audit-body {
+  padding: 0 1.1rem 1.1rem;
+  border-top: 1px solid var(--as-border);
+  padding-top: 1rem;
+}
+
+/* Barra de progreso de carrera */
+.career-progress {
+  height: 14px;
+  border-radius: 999px;
+  background: var(--as-surface-sunken);
+  overflow: hidden;
+}
+.career-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--as-gradient);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.progress-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+.brk {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--as-text-muted);
+  background: var(--as-surface-sunken);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+}
+.brk-ok { color: var(--as-success); background: var(--as-success-soft); }
+.brk-rest { color: var(--as-text-muted); }
+
+/* Checklist de requisitos */
+.req-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.req-item {
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius-sm);
+  padding: 0.6rem 0.7rem;
+  background: var(--as-surface);
+}
+.req-item.done {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: var(--as-success-soft);
+}
+.req-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--as-text);
+  margin-bottom: 0.4rem;
+}
+.req-toggle {
+  width: 100%;
+  border: 1px solid var(--as-border-strong);
+  background: var(--as-surface);
+  color: var(--as-text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--as-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.req-toggle.on {
+  background: var(--as-success);
+  border-color: var(--as-success);
+  color: #fff;
+}
+
+/* Switches de acreditación en el drawer */
+.acredita-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.acredita-btn {
+  border: 1px solid var(--as-border-strong);
+  background: var(--as-surface);
+  color: var(--as-text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.acredita-btn.on {
+  background: var(--as-accent-soft);
+  border-color: var(--as-accent);
+  color: var(--as-accent-strong);
+}

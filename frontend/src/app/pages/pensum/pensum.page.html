@@ -52,6 +52,138 @@
   <div class="alert alert-warning">{{ error() }}</div>
 }
 
+<!-- Auditor de Grado -->
+@if (progreso(); as p) {
+  <div class="card audit-card mb-4">
+    <button type="button" class="audit-head" (click)="toggleAudit()">
+      <div class="d-flex align-items-center gap-2">
+        <span class="audit-icon">🎓</span>
+        <strong>Auditor de Grado</strong>
+        <span class="audit-pct tabular-nums">{{ p.porcentajeAvance }}%</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="grado-semaforo" [class.ok]="elegibleGrado()" [class.no]="!elegibleGrado()">
+          {{ elegibleGrado() ? '✓ Elegible para Proyecto de Grado' : 'Grado pendiente' }}
+        </span>
+        <span class="audit-caret">{{ auditOpen() ? '▾' : '▸' }}</span>
+      </div>
+    </button>
+
+    @if (auditOpen()) {
+      <div class="audit-body">
+        <!-- Barra de progreso de carrera -->
+        <div class="progress-wrap">
+          <div class="d-flex justify-content-between align-items-end mb-1">
+            <span class="small text-muted">Progreso de carrera</span>
+            <span class="tabular-nums fw-bold">
+              {{ p.creditosAprobados }} / {{ p.creditosTotales }} créditos · {{ p.porcentajeAvance }}%
+            </span>
+          </div>
+          <div class="career-progress">
+            <div class="career-progress-fill" [style.width.%]="p.porcentajeAvance"></div>
+          </div>
+          <div class="progress-breakdown tabular-nums">
+            <span class="brk brk-ok">Aprobados: {{ p.creditosAprobados }}</span>
+            <span class="brk brk-rest">Restantes: {{ p.creditosTotales - p.creditosAprobados }}</span>
+            <span class="brk">CBUs: {{ p.cbusCompletados }}/{{ p.cbusTotales }}</span>
+            <span class="brk">CLEs: {{ p.clesCompletados }}/{{ p.clesTotales }}</span>
+            <span class="brk">Nivel 1-2: {{ p.nivel12Aprobados }}/{{ p.nivel12Totales }}</span>
+          </div>
+        </div>
+
+        <!-- Checklist de requisitos transversales -->
+        @if (audit(); as a) {
+          <div class="req-grid">
+            <!-- RLEC -->
+            <div class="req-item" [class.done]="a.rlecAprobado">
+              <div class="req-label">Lectura en Inglés (RLEC)</div>
+              <button
+                class="req-toggle"
+                [class.on]="a.rlecAprobado"
+                [disabled]="savingAudit()"
+                (click)="toggleRlec()"
+              >
+                {{ a.rlecAprobado ? '✓ Cumplido' : 'Pendiente' }}
+              </button>
+            </div>
+
+            <!-- RIDI -->
+            <div class="req-item" [class.done]="a.ridiAprobado">
+              <div class="req-label">Requisito de Idiomas (RIDI)</div>
+              <button
+                class="req-toggle"
+                [class.on]="a.ridiAprobado"
+                [disabled]="savingAudit()"
+                (click)="toggleRidi()"
+              >
+                {{ a.ridiAprobado ? '✓ Cumplido' : 'Pendiente' }}
+              </button>
+            </div>
+
+            <!-- Internacionalización -->
+            <div class="req-item" [class.done]="a.internacionalizacion">
+              <div class="req-label">Internacionalización</div>
+              <button
+                class="req-toggle"
+                [class.on]="a.internacionalizacion"
+                [disabled]="savingAudit()"
+                (click)="toggleInternacionalizacion()"
+              >
+                {{ a.internacionalizacion ? '✓ Cumplido' : 'Pendiente' }}
+              </button>
+            </div>
+
+            <!-- Curso Tipo E 1 -->
+            <div class="req-item" [class.done]="!!a.cursoTipoE1">
+              <div class="req-label">Curso Tipo E 1</div>
+              <select
+                class="form-select form-select-sm"
+                [ngModel]="a.cursoTipoE1 || ''"
+                (ngModelChange)="setCursoTipoE1($event)"
+              >
+                <option value="">Sin asignar</option>
+                @for (m of materiasAsignables(); track m.id) {
+                  <option [value]="m.codigo">{{ m.codigo }} — {{ m.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- Curso Tipo E 2 -->
+            <div class="req-item" [class.done]="!!a.cursoTipoE2">
+              <div class="req-label">Curso Tipo E 2</div>
+              <select
+                class="form-select form-select-sm"
+                [ngModel]="a.cursoTipoE2 || ''"
+                (ngModelChange)="setCursoTipoE2($event)"
+              >
+                <option value="">Sin asignar</option>
+                @for (m of materiasAsignables(); track m.id) {
+                  <option [value]="m.codigo">{{ m.codigo }} — {{ m.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            <!-- Curso Tipo Épsilon -->
+            <div class="req-item" [class.done]="!!a.cursoTipoEpsilon">
+              <div class="req-label">Curso Tipo Épsilon (Ética)</div>
+              <select
+                class="form-select form-select-sm"
+                [ngModel]="a.cursoTipoEpsilon || ''"
+                (ngModelChange)="setCursoTipoEpsilon($event)"
+              >
+                <option value="">Sin asignar</option>
+                @for (m of materiasAsignables(); track m.id) {
+                  <option [value]="m.codigo">{{ m.codigo }} — {{ m.nombre }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
 @if (loading()) {
   <div class="text-center py-5">
     <div class="spinner-border text-primary" role="status"></div>
@@ -162,6 +294,34 @@
                 {{ statusLabel(s) }}
               </button>
             }
+          </div>
+        </div>
+
+        <!-- Acreditación de requisitos transversales -->
+        <div class="mt-3">
+          <label class="form-label small mb-1">Acredita requisito</label>
+          <div class="acredita-switches">
+            <button
+              class="acredita-btn"
+              [class.on]="acreditaE1(item)"
+              (click)="acreditarComo('e1', item)"
+            >
+              {{ acreditaE1(item) ? '✓ ' : '' }}Curso Tipo E 1
+            </button>
+            <button
+              class="acredita-btn"
+              [class.on]="acreditaE2(item)"
+              (click)="acreditarComo('e2', item)"
+            >
+              {{ acreditaE2(item) ? '✓ ' : '' }}Curso Tipo E 2
+            </button>
+            <button
+              class="acredita-btn"
+              [class.on]="acreditaEpsilon(item)"
+              (click)="acreditarComo('epsilon', item)"
+            >
+              {{ acreditaEpsilon(item) ? '✓ ' : '' }}Tipo Épsilon
+            </button>
           </div>
         </div>
 
