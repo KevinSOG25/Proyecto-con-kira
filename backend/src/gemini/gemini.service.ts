@@ -22,6 +22,31 @@ const FALLBACK_MAX_RETRIES = 1;
 /** Retardo base en ms; crece exponencialmente: 2s, 4s, 8s. */
 const BASE_DELAY_MS = 2000;
 
+/** Timeout estricto para el modelo principal en el modo "fast" (ms). */
+const FAST_PRIMARY_TIMEOUT_MS = 20_000;
+/** Timeout corto para el respaldo Gemini en el modo "fast" (ms). */
+const FAST_FALLBACK_TIMEOUT_MS = 8_000;
+/** Timeout para la llamada a Groq (ms). */
+const GROQ_TIMEOUT_MS = 10_000;
+/** Endpoint OpenAI-compatible de Groq. */
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+/** Modelo de Groq por defecto (muy rápido). */
+const GROQ_MODEL_DEFAULT = 'llama-3.3-70b-versatile';
+
+/** Error interno para señalar que se agotó el timeout. */
+class TimeoutError extends Error {
+  constructor(ms: number) {
+    super(`Timeout de ${ms} ms alcanzado.`);
+    this.name = 'TimeoutError';
+  }
+}
+
+/** Resultado de una generación con indicación del proveedor que respondió. */
+export interface ProviderResult<T> {
+  data: T;
+  provider: 'Gemini' | 'Groq' | 'Respaldo';
+}
+
 /**
  * Envoltura del SDK oficial de Google GenAI (@google/genai) usando el
  * modelo Gemini 3.8 Flash (stable vigente de la familia 3). Incluye:
@@ -39,6 +64,10 @@ export class GeminiService {
   private readonly client: GoogleGenAI;
   private readonly model: string;
   private readonly fallbackModel: string;
+  /** Modelo Gemini de respaldo rápido para el modo "fast" (sin reintentos). */
+  private readonly fastFallbackModel: string;
+  private readonly groqApiKey: string | undefined;
+  private readonly groqModel: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('GEMINI_API_KEY');
@@ -63,8 +92,18 @@ export class GeminiService {
       this.config.get<string>('FALLBACK_GEMINI_MODEL', 'gemini-3.5-flash'),
     );
 
+    // Respaldo rápido para el modo "fast" (timeout corto, sin reintentos).
+    this.fastFallbackModel = this.sanitizeModel(
+      this.config.get<string>('FAST_FALLBACK_GEMINI_MODEL', 'gemini-3.7-flash'),
+    );
+
+    // Proveedor secundario Groq (opcional).
+    this.groqApiKey = this.config.get<string>('GROQ_API_KEY') || undefined;
+    this.groqModel = this.config.get<string>('GROQ_MODEL', GROQ_MODEL_DEFAULT);
+
     this.logger.log(
-      `Modelo Gemini principal: ${this.model} · respaldo: ${this.fallbackModel}`,
+      `Modelo Gemini principal: ${this.model} · respaldo: ${this.fallbackModel}` +
+        (this.groqApiKey ? ' · Groq disponible' : ''),
     );
   }
 
@@ -120,6 +159,160 @@ export class GeminiService {
       return response.text ?? '';
     } catch (err: unknown) {
       throw this.toHttpException(err, 'texto');
+    }
+  }
+
+  /**
+   * Generación JSON de BAJA LATENCIA pensada para endpoints interactivos
+   * (p. ej. proyección de semestre) donde Cloud Run puede cortar con 504.
+   *
+   * Estrategia (sin backoff exponencial):
+   *  1. Modelo principal (gemini-3.8-flash) envuelto en Promise.race con
+   *     timeout ESTRICTO de 20s. Si vence el timeout o la API responde
+   *     503/429, se aborta de inmediato (no se reintenta).
+   *  2. Conmutación inmediata al respaldo:
+   *     - Si hay GROQ_API_KEY -> Groq (llama-3.3-70b-versatile), JSON, ~1s.
+   *     - Si no -> Gemini secundario (gemini-3.7-flash) con timeout corto 8s,
+   *       sin reintentos.
+   *  3. Devuelve { data, provider } indicando quién resolvió.
+   */
+  async generateJsonFast<T>(
+    systemInstruction: string,
+    userPrompt: string,
+    schema: Schema,
+  ): Promise<ProviderResult<T>> {
+    // --- 1) Modelo principal con timeout estricto ---
+    try {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: this.model,
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.1,
+          },
+        }),
+        FAST_PRIMARY_TIMEOUT_MS,
+      );
+      const text = response.text;
+      if (!text) throw new Error('Respuesta vacía del modelo principal.');
+      return { data: this.parseJson<T>(text), provider: 'Gemini' };
+    } catch (primaryErr: unknown) {
+      const esTimeout = primaryErr instanceof TimeoutError;
+      const status = this.extractStatus(primaryErr);
+      this.logger.warn(
+        `Modelo principal (${this.model}) no resolvió a tiempo ` +
+          `(${esTimeout ? 'timeout 20s' : 'status ' + status}). Conmutando a respaldo…`,
+      );
+    }
+
+    // --- 2) Respaldo inmediato: Groq si hay API key ---
+    if (this.groqApiKey) {
+      try {
+        const data = await this.generateWithGroq<T>(
+          systemInstruction,
+          userPrompt,
+        );
+        this.logger.log(`Respaldo Groq (${this.groqModel}) respondió.`);
+        return { data, provider: 'Groq' };
+      } catch (groqErr: unknown) {
+        this.logger.error(
+          `Respaldo Groq falló: ${(groqErr as Error)?.message}. ` +
+            'Intentando respaldo Gemini secundario…',
+        );
+      }
+    }
+
+    // --- 2b) Respaldo Gemini secundario con timeout corto (sin reintentos) ---
+    try {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: this.fastFallbackModel,
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.1,
+          },
+        }),
+        FAST_FALLBACK_TIMEOUT_MS,
+      );
+      const text = response.text;
+      if (!text) throw new Error('Respuesta vacía del respaldo Gemini.');
+      this.logger.log(`Respaldo Gemini (${this.fastFallbackModel}) respondió.`);
+      return { data: this.parseJson<T>(text), provider: 'Respaldo' };
+    } catch (fallbackErr: unknown) {
+      this.logger.error(
+        `Todos los proveedores fallaron: ${(fallbackErr as Error)?.message}`,
+      );
+      throw new ServiceUnavailableException(
+        'El servicio de IA está saturado y el respaldo no respondió a tiempo. ' +
+          'Inténtalo de nuevo en unos momentos.',
+      );
+    }
+  }
+
+  /** Envuelve una promesa en un Promise.race con timeout estricto. */
+  private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    let timer: NodeJS.Timeout;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new TimeoutError(ms)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() =>
+      clearTimeout(timer),
+    ) as Promise<T>;
+  }
+
+  /**
+   * Llama al endpoint OpenAI-compatible de Groq pidiendo salida JSON.
+   * Usa fetch nativo (Node 18+) con AbortController para el timeout.
+   */
+  private async generateWithGroq<T>(
+    systemInstruction: string,
+    userPrompt: string,
+  ): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
+    try {
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.groqApiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.groqModel,
+          messages: [
+            {
+              role: 'system',
+              content:
+                systemInstruction +
+                '\nResponde ÚNICAMENTE con un objeto JSON válido.',
+            },
+            { role: 'user', content: userPrompt },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.1,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`Groq respondió ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      const json = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const content = json.choices?.[0]?.message?.content;
+      if (!content) throw new Error('Groq devolvió una respuesta vacía.');
+      return this.parseJson<T>(content);
+    } finally {
+      clearTimeout(timer);
     }
   }
 

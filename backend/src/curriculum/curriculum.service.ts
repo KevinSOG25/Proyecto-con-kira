@@ -487,7 +487,9 @@ ${JSON.stringify(candidatas, null, 2)}
 Créditos objetivo del semestre: ${creditosObjetivo}.
 Propón la mejor combinación balanceada.`;
 
-    const result = await this.gemini.generateJson<{
+    // Generación de baja latencia: timeout estricto 20s + fallback inmediato
+    // (Groq o Gemini secundario). Devuelve el proveedor que resolvió.
+    const { data: result, provider } = await this.gemini.generateJsonFast<{
       materias: {
         codigo: string;
         nombre: string;
@@ -496,7 +498,7 @@ Propón la mejor combinación balanceada.`;
       }[];
       creditosTotales?: number;
       justificacion: string;
-    }>(systemInstruction, [this.gemini.textPart(prompt)], schema as any);
+    }>(systemInstruction, prompt, schema as any);
 
     // Recalcula el total de créditos de forma fiable en el backend.
     const creditosTotales = (result.materias ?? []).reduce(
@@ -509,6 +511,7 @@ Propón la mejor combinación balanceada.`;
       creditosTotales,
       creditosObjetivo,
       generadoPorIA: true,
+      provider,
     };
   }
 

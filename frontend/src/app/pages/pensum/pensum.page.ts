@@ -720,6 +720,32 @@ export class PensumPage implements OnInit {
     this.aiModalOpen.set(false);
   }
 
+  /** Etiqueta del proveedor que resolvió la proyección. */
+  providerLabel(provider?: 'Gemini' | 'Groq' | 'Respaldo'): string {
+    switch (provider) {
+      case 'Groq':
+        return '⚡ Resuelto por Groq (Llama 3.3 70B)';
+      case 'Respaldo':
+        return '🔁 Resuelto por modelo de respaldo';
+      case 'Gemini':
+        return '✨ Resuelto por Gemini 3.8 Flash';
+      default:
+        return '✨ Resuelto por IA';
+    }
+  }
+
+  /** Clase de color del tag de proveedor. */
+  providerClass(provider?: 'Gemini' | 'Groq' | 'Respaldo'): string {
+    switch (provider) {
+      case 'Groq':
+        return 'prov-groq';
+      case 'Respaldo':
+        return 'prov-respaldo';
+      default:
+        return 'prov-gemini';
+    }
+  }
+
   // ============================================================
   //  Énfasis profesional + Coterminal (DISC)
   // ============================================================
