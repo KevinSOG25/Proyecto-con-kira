@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
@@ -7,8 +7,10 @@ import {
   CriticalPathNode,
   CurriculumItem,
   CurriculumResponse,
+  DegreeAuditResponse,
   SimulateNextSemesterResult,
   UpdateCurriculumItem,
+  UpdateDegreeAudit,
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -45,5 +47,20 @@ export class CurriculumService {
 
   criticalPath(): Observable<CriticalPathNode[]> {
     return this.http.get<CriticalPathNode[]>(`${this.base}/critical-path`);
+  }
+
+  getDegreeAudit(aprobadas: string[]): Observable<DegreeAuditResponse> {
+    let params = new HttpParams();
+    if (aprobadas.length) params = params.set('aprobadas', aprobadas.join(','));
+    return this.http.get<DegreeAuditResponse>(`${this.base}/degree-audit`, {
+      params,
+    });
+  }
+
+  updateDegreeAudit(dto: UpdateDegreeAudit): Observable<DegreeAuditResponse> {
+    return this.http.patch<DegreeAuditResponse>(
+      `${this.base}/degree-audit`,
+      dto,
+    );
   }
 }

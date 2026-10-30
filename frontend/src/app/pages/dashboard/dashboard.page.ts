@@ -1,4 +1,11 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  effect,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -7,6 +14,7 @@ import { ChartData, ChartOptions } from 'chart.js';
 import { finalize } from 'rxjs';
 import { AnalyticsService } from '../../services/analytics.service';
 import { SubjectSelectionService } from '../../services/subject-selection.service';
+import { ThemeService } from '../../services/theme.service';
 import {
   DashboardAnalytics,
   EffortMatrixItem,
@@ -28,6 +36,7 @@ export class DashboardPage implements OnInit {
   private analyticsService = inject(AnalyticsService);
   private subjectSelection = inject(SubjectSelectionService);
   private router = inject(Router);
+  private theme = inject(ThemeService);
 
   data = signal<DashboardAnalytics | null>(null);
   loading = signal(false);
@@ -63,32 +72,55 @@ export class DashboardPage implements OnInit {
   // --- Gráfico de barras ---
   barChartData = signal<ChartData<'bar'>>({ labels: [], datasets: [] });
 
-  barChartOptions: ChartOptions<'bar'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 5,
-        ticks: { stepSize: 1 },
-        grid: { color: 'rgba(0,0,0,0.05)' },
+  /** Opciones del gráfico, reactivas al tema (colores de ejes/grid/tooltip). */
+  barChartOptions = signal<ChartOptions<'bar'>>(this.buildChartOptions(false));
+
+  constructor() {
+    // Reconstruye las opciones del gráfico al cambiar el tema (claro/oscuro).
+    effect(() => {
+      const dark = this.theme.isDark();
+      this.barChartOptions.set(this.buildChartOptions(dark));
+    });
+  }
+
+  /** Construye opciones de Chart.js adaptadas al tema actual. */
+  private buildChartOptions(dark: boolean): ChartOptions<'bar'> {
+    const tick = dark ? '#a1a1aa' : '#64748b';
+    const grid = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+    const tipBg = dark ? '#27272a' : '#0f172a';
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 5,
+          ticks: { stepSize: 1, color: tick },
+          grid: { color: grid },
+        },
+        x: {
+          ticks: { color: tick },
+          grid: { display: false },
+        },
       },
-      x: { grid: { display: false } },
-    },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (ctx) => {
-            const y = ctx.parsed.y ?? 0;
-            const etiqueta =
-              this.avgView() === 'relativa' ? 'Nota actual' : 'Acumulado neto';
-            return `${etiqueta}: ${y.toFixed(2)} / 5.0`;
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: tipBg,
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          callbacks: {
+            label: (ctx) => {
+              const y = ctx.parsed.y ?? 0;
+              const etiqueta =
+                this.avgView() === 'relativa' ? 'Nota actual' : 'Acumulado neto';
+              return `${etiqueta}: ${y.toFixed(2)} / 5.0`;
+            },
           },
         },
       },
-    },
-  };
+    };
+  }
 
   ngOnInit(): void {
     this.load();

@@ -7,12 +7,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { CurriculumService } from './curriculum.service';
 import {
   CreateCurriculumItemDto,
   SimulateNextSemesterDto,
   UpdateCurriculumItemDto,
+  UpdateDegreeAuditDto,
 } from './dto/curriculum.dto';
 
 @Controller('curriculum')
@@ -29,6 +31,22 @@ export class CurriculumController {
   @Get('critical-path')
   criticalPath() {
     return this.curriculumService.criticalPath();
+  }
+
+  /**
+   * Auditor de grado: requisitos transversales + progreso global.
+   * ?aprobadas=ISIS-1221,MATE-1201 (coma-separado) para calcular créditos.
+   */
+  @Get('degree-audit')
+  getDegreeAudit(@Query('aprobadas') aprobadas?: string) {
+    const codes = aprobadas ? aprobadas.split(',').filter(Boolean) : [];
+    return this.curriculumService.getDegreeAudit(codes);
+  }
+
+  /** Actualiza los requisitos transversales del auditor de grado. */
+  @Patch('degree-audit')
+  updateDegreeAudit(@Body() dto: UpdateDegreeAuditDto) {
+    return this.curriculumService.updateDegreeAudit(dto);
   }
 
   /** Simula el próximo semestre: materias elegibles dadas las aprobadas. */

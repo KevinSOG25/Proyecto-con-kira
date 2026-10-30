@@ -246,6 +246,47 @@ export interface CriticalPathNode {
   descendientes: string[];
 }
 
+/** ---- Auditor de grado ---- */
+export interface DegreeAuditState {
+  id: string;
+  googleUserId: string;
+  rlecAprobado: boolean;
+  ridiAprobado: boolean;
+  cursoTipoE1: string | null;
+  cursoTipoE2: string | null;
+  cursoTipoEpsilon: string | null;
+  internacionalizacion: boolean;
+}
+
+export interface DegreeProgress {
+  creditosAprobados: number;
+  creditosTotales: number;
+  porcentajeAvance: number;
+  cbusTotales: number;
+  cbusCompletados: number;
+  clesTotales: number;
+  clesCompletados: number;
+  nivel12Totales: number;
+  nivel12Aprobados: number;
+  elegibleProyectoGrado: boolean;
+}
+
+export interface DegreeAuditResponse {
+  audit: DegreeAuditState;
+  progreso: DegreeProgress;
+  creditosTotales: number;
+}
+
+export interface UpdateDegreeAudit {
+  rlecAprobado?: boolean;
+  ridiAprobado?: boolean;
+  cursoTipoE1?: string | null;
+  cursoTipoE2?: string | null;
+  cursoTipoEpsilon?: string | null;
+  internacionalizacion?: boolean;
+  aprobadas?: string[];
+}
+
 /** ---- Importación de syllabus ---- */
 export interface ImportSubjectPayload {
   materia: string;

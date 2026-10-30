@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -81,6 +82,45 @@ export class UpdateCurriculumItemDto {
  * frontend suele enviar aprobadas + en curso.
  */
 export class SimulateNextSemesterDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aprobadas?: string[];
+}
+
+/** Actualización parcial del auditor de grado (requisitos transversales). */
+export class UpdateDegreeAuditDto {
+  @IsOptional()
+  @IsBoolean()
+  rlecAprobado?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  ridiAprobado?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  cursoTipoE1?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  cursoTipoE2?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  cursoTipoEpsilon?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  internacionalizacion?: boolean;
+
+  /**
+   * Códigos de materias aprobadas (opcional). Si se envían, el backend calcula
+   * el progreso de créditos y la elegibilidad de grado con base en ellos.
+   */
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
