@@ -12,6 +12,9 @@ import {
   DegreeAuditResponse,
   DegreeProgress,
   DegreeAuditState,
+  DiscCourse,
+  GeminiProjection,
+  Maestria,
   SimulateNextSemesterResult,
   Subject,
 } from '../../models/api.models';
@@ -77,6 +80,7 @@ export class PensumPage implements OnInit {
     this.subjectsService.findAll().subscribe({
       next: (data) => this.subjects.set(data),
     });
+    this.loadDiscCatalog();
   }
 
   load(): void {
@@ -504,6 +508,13 @@ export class PensumPage implements OnInit {
       .map((i) => i.codigo);
   }
 
+  /** Códigos de materias en curso (para el tercer estado de la barra). */
+  private codigosEnCurso(): string[] {
+    return this.items()
+      .filter((i) => this.statusOf(i) === 'en_curso')
+      .map((i) => i.codigo);
+  }
+
   /** Materias disponibles para asignar a Cursos Tipo E / Épsilon. */
   materiasAsignables(): CurriculumItem[] {
     return this.items().filter((i) => {
@@ -517,15 +528,17 @@ export class PensumPage implements OnInit {
   }
 
   loadAudit(): void {
-    this.curriculumService.getDegreeAudit(this.codigosAprobados()).subscribe({
-      next: (res: DegreeAuditResponse) => {
-        this.audit.set(res.audit);
-        this.progreso.set(res.progreso);
-      },
-      error: () => {
-        /* el auditor es opcional; no bloquea la vista del pensum */
-      },
-    });
+    this.curriculumService
+      .getDegreeAudit(this.codigosAprobados(), this.codigosEnCurso())
+      .subscribe({
+        next: (res: DegreeAuditResponse) => {
+          this.audit.set(res.audit);
+          this.progreso.set(res.progreso);
+        },
+        error: () => {
+          /* el auditor es opcional; no bloquea la vista del pensum */
+        },
+      });
   }
 
   /** Recalcula el progreso (sin cambiar requisitos) tras cambiar estados. */
@@ -536,7 +549,11 @@ export class PensumPage implements OnInit {
   private patchAudit(patch: Partial<DegreeAuditState>): void {
     this.savingAudit.set(true);
     this.curriculumService
-      .updateDegreeAudit({ ...patch, aprobadas: this.codigosAprobados() })
+      .updateDegreeAudit({
+        ...patch,
+        aprobadas: this.codigosAprobados(),
+        enCurso: this.codigosEnCurso(),
+      })
       .pipe(finalize(() => this.savingAudit.set(false)))
       .subscribe({
         next: (res) => {
@@ -591,5 +608,262 @@ export class PensumPage implements OnInit {
   /** Semáforo de elegibilidad de grado. */
   elegibleGrado(): boolean {
     return this.progreso()?.elegibleProyectoGrado ?? false;
+  }
+
+  /** Texto completo "CÓDIGO — Nombre" de una materia, para tooltips (pensum). */
+  codigoNombreCompleto(codigo: string | null): string {
+    if (!codigo) return 'Sin asignar';
+    const norm = this.normCode(codigo);
+    const item = this.items().find((i) => this.normCode(i.codigo) === norm);
+    return item ? `${item.codigo} — ${item.nombre}` : codigo;
+  }
+
+  // ============================================================
+  //  Simulador de PGA acumulado
+  // ============================================================
+  pgaOpen = signal(false);
+  /** PGA actual ingresado por el usuario. */
+  pgaActual = 0;
+  /** Créditos acumulados hasta el momento. */
+  creditosAcumulados = 0;
+  /** Notas proyectadas por código de materia en curso (1.0-5.0). */
+  notasProyectadas = signal<Record<string, number>>({});
+
+  togglePga(): void {
+    this.pgaOpen.update((v) => !v);
+  }
+
+  /** Materias en curso (para proyectar notas). */
+  materiasEnCurso(): CurriculumItem[] {
+    return this.items().filter((i) => this.statusOf(i) === 'en_curso');
+  }
+
+  notaProyectada(codigo: string): number {
+    return this.notasProyectadas()[codigo] ?? 3.0;
+  }
+
+  setNotaProyectada(codigo: string, value: number | string): void {
+    const n = Math.max(1, Math.min(5, Number(value) || 0));
+    this.notasProyectadas.update((cur) => ({ ...cur, [codigo]: n }));
+  }
+
+  /** Créditos del semestre en curso. */
+  creditosSemestreEnCurso(): number {
+    return this.materiasEnCurso().reduce((acc, i) => acc + i.creditos, 0);
+  }
+
+  /** Promedio proyectado del semestre actual, ponderado por créditos. */
+  promedioSemestreProyectado(): number {
+    const cursos = this.materiasEnCurso();
+    let suma = 0;
+    let cred = 0;
+    for (const c of cursos) {
+      suma += this.notaProyectada(c.codigo) * c.creditos;
+      cred += c.creditos;
+    }
+    return cred > 0 ? Number((suma / cred).toFixed(2)) : 0;
+  }
+
+  /**
+   * Nuevo PGA acumulado tras cerrar el semestre:
+   * (PGA_actual × créditos_acum + Σ nota×créditos del semestre) /
+   * (créditos_acum + créditos_semestre)
+   */
+  nuevoPgaProyectado(): number {
+    const credSem = this.creditosSemestreEnCurso();
+    const credAcum = Number(this.creditosAcumulados) || 0;
+    const pga = Number(this.pgaActual) || 0;
+
+    let sumaSem = 0;
+    for (const c of this.materiasEnCurso()) {
+      sumaSem += this.notaProyectada(c.codigo) * c.creditos;
+    }
+    const totalCred = credAcum + credSem;
+    if (totalCred <= 0) return 0;
+    return Number(((pga * credAcum + sumaSem) / totalCred).toFixed(2));
+  }
+
+  // ============================================================
+  //  Proyección con IA (Gemini)
+  // ============================================================
+  aiProjecting = signal(false);
+  aiProjection = signal<GeminiProjection | null>(null);
+  aiModalOpen = signal(false);
+
+  proyectarConIA(): void {
+    this.aiProjecting.set(true);
+    this.aiProjection.set(null);
+    this.aiModalOpen.set(true);
+    this.error.set(null);
+    this.curriculumService
+      .projectSemester({
+        aprobadas: this.codigosAprobados(),
+        enCurso: this.codigosEnCurso(),
+        creditosObjetivo: 17,
+      })
+      .pipe(finalize(() => this.aiProjecting.set(false)))
+      .subscribe({
+        next: (res) => this.aiProjection.set(res),
+        error: (err) => {
+          this.aiModalOpen.set(false);
+          this.error.set(
+            extractHttpErrorMessage(
+              err,
+              'No se pudo generar la proyección con IA (servicio de Gemini).',
+            ),
+          );
+        },
+      });
+  }
+
+  closeAiModal(): void {
+    this.aiModalOpen.set(false);
+  }
+
+  // ============================================================
+  //  Énfasis profesional + Coterminal (DISC)
+  // ============================================================
+  discCursos = signal<DiscCourse[]>([]);
+  maestrias = signal<{ codigo: Maestria; nombre: string }[]>([]);
+  creditosPosgradoObjetivo = signal(40);
+
+  /** Track de énfasis seleccionado (filtra electivas). '' = todos. */
+  enfasis = signal<string>('');
+  readonly enfasisOpciones = [
+    'Inteligencia Artificial y Datos',
+    'Arquitectura, Cloud y Distribución',
+    'Ciberseguridad, Redes e Infraestructura',
+    'Computación Visual, Interactiva y Videojuegos',
+  ];
+
+  // Coterminal
+  coterminalMode = signal(false);
+  maestriaObjetivo = signal<Maestria>('MISIS');
+  /** Códigos de posgrado asignados a espacios EP (por el usuario). */
+  epPosgrado = signal<string[]>([]);
+  nuevoCursoCustomCodigo = '';
+  nuevoCursoCustomNombre = '';
+  nuevoCursoCustomCreditos = 4;
+  cursosCustom = signal<DiscCourse[]>([]);
+
+  loadDiscCatalog(): void {
+    this.curriculumService.discCatalog().subscribe({
+      next: (cat) => {
+        this.discCursos.set(cat.cursos);
+        this.maestrias.set(cat.maestrias);
+        this.creditosPosgradoObjetivo.set(cat.creditosPosgradoObjetivo);
+      },
+    });
+  }
+
+  /** Todos los cursos de posgrado disponibles (catálogo + personalizados). */
+  cursosPosgrado(): DiscCourse[] {
+    return [...this.discCursos(), ...this.cursosCustom()];
+  }
+
+  setEnfasis(area: string): void {
+    this.enfasis.set(area);
+  }
+
+  /** Cursos del catálogo filtrados por el track de énfasis. */
+  cursosDeEnfasis(): DiscCourse[] {
+    const area = this.enfasis();
+    if (!area) return this.discCursos();
+    return this.discCursos().filter((c) => c.area === area);
+  }
+
+  /** % de avance hacia la concentración del énfasis (cursos de esa área aprobados). */
+  avanceEnfasis(): number {
+    const area = this.enfasis();
+    if (!area) return 0;
+    const delArea = this.discCursos().filter((c) => c.area === area);
+    if (delArea.length === 0) return 0;
+    const aprobadas = new Set(this.codigosAprobados().map((c) => this.normCode(c)));
+    const hechos = delArea.filter((c) => aprobadas.has(this.normCode(c.codigo)));
+    return Number(((hechos.length / delArea.length) * 100).toFixed(0));
+  }
+
+  toggleCoterminal(): void {
+    this.coterminalMode.update((v) => !v);
+    if (this.coterminalMode() && this.discCursos().length === 0) {
+      this.loadDiscCatalog();
+    }
+  }
+
+  setMaestria(m: Maestria): void {
+    this.maestriaObjetivo.set(m);
+  }
+
+  /** Clasificación de un curso para la maestría activa (o null si no aplica). */
+  clasificacionPara(curso: DiscCourse): string | null {
+    const found = curso.clasificaciones.find(
+      (c) => c.maestria === this.maestriaObjetivo(),
+    );
+    return found ? found.tipo : null;
+  }
+
+  /** ¿El curso es válido para la maestría activa? */
+  esValidoParaMaestria(curso: DiscCourse): boolean {
+    return this.clasificacionPara(curso) !== null;
+  }
+
+  /** Espacios de Electiva Profesional (EP) del pregrado. */
+  espaciosEP(): CurriculumItem[] {
+    return this.items().filter((i) => /^EP-\d/i.test(i.codigo));
+  }
+
+  toggleEpPosgrado(codigo: string): void {
+    this.epPosgrado.update((cur) =>
+      cur.includes(codigo) ? cur.filter((c) => c !== codigo) : [...cur, codigo],
+    );
+  }
+
+  isEpSeleccionado(codigo: string): boolean {
+    return this.epPosgrado().includes(codigo);
+  }
+
+  /** Créditos de posgrado adelantados (cursos seleccionados válidos para la maestría). */
+  creditosPosgradoAdelantados(): number {
+    const sel = new Set(this.epPosgrado());
+    return this.cursosPosgrado()
+      .filter((c) => sel.has(c.codigo) && this.esValidoParaMaestria(c))
+      .reduce((acc, c) => acc + c.creditos, 0);
+  }
+
+  porcentajePosgrado(): number {
+    const obj = this.creditosPosgradoObjetivo();
+    return obj > 0
+      ? Number(((this.creditosPosgradoAdelantados() / obj) * 100).toFixed(0))
+      : 0;
+  }
+
+  /** Agrega un curso de posgrado personalizado (tópicos especiales). */
+  agregarCursoCustom(): void {
+    const codigo = this.nuevoCursoCustomCodigo.trim();
+    const nombre = this.nuevoCursoCustomNombre.trim();
+    if (!codigo || !nombre) return;
+    this.cursosCustom.update((cur) => [
+      ...cur,
+      {
+        codigo,
+        nombre,
+        creditos: Number(this.nuevoCursoCustomCreditos) || 4,
+        area: 'Personalizado',
+        // Se asume válido como Profundización para la maestría activa.
+        clasificaciones: [
+          { maestria: this.maestriaObjetivo(), tipo: 'Profundización' },
+        ],
+      },
+    ]);
+    this.nuevoCursoCustomCodigo = '';
+    this.nuevoCursoCustomNombre = '';
+    this.nuevoCursoCustomCreditos = 4;
+  }
+
+  maestriaNombre(): string {
+    return (
+      this.maestrias().find((m) => m.codigo === this.maestriaObjetivo())?.nombre ??
+      this.maestriaObjetivo()
+    );
   }
 }

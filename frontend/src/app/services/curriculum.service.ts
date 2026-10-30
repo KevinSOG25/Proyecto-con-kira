@@ -8,6 +8,8 @@ import {
   CurriculumItem,
   CurriculumResponse,
   DegreeAuditResponse,
+  DiscCatalog,
+  GeminiProjection,
   SimulateNextSemesterResult,
   UpdateCurriculumItem,
   UpdateDegreeAudit,
@@ -45,13 +47,32 @@ export class CurriculumService {
     );
   }
 
+  projectSemester(payload: {
+    aprobadas: string[];
+    enCurso: string[];
+    creditosObjetivo?: number;
+  }): Observable<GeminiProjection> {
+    return this.http.post<GeminiProjection>(
+      `${this.base}/project-semester`,
+      payload,
+    );
+  }
+
   criticalPath(): Observable<CriticalPathNode[]> {
     return this.http.get<CriticalPathNode[]>(`${this.base}/critical-path`);
   }
 
-  getDegreeAudit(aprobadas: string[]): Observable<DegreeAuditResponse> {
+  discCatalog(): Observable<DiscCatalog> {
+    return this.http.get<DiscCatalog>(`${this.base}/disc-catalog`);
+  }
+
+  getDegreeAudit(
+    aprobadas: string[],
+    enCurso: string[] = [],
+  ): Observable<DegreeAuditResponse> {
     let params = new HttpParams();
     if (aprobadas.length) params = params.set('aprobadas', aprobadas.join(','));
+    if (enCurso.length) params = params.set('enCurso', enCurso.join(','));
     return this.http.get<DegreeAuditResponse>(`${this.base}/degree-audit`, {
       params,
     });

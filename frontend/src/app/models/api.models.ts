@@ -246,6 +246,42 @@ export interface CriticalPathNode {
   descendientes: string[];
 }
 
+export interface GeminiProjectionCourse {
+  codigo: string;
+  nombre: string;
+  creditos: number;
+  razon?: string;
+}
+
+export interface GeminiProjection {
+  materias: GeminiProjectionCourse[];
+  creditosTotales: number;
+  creditosObjetivo?: number;
+  justificacion: string;
+  generadoPorIA: boolean;
+}
+
+/** ---- Catálogo DISC (posgrado / coterminal) ---- */
+export type Maestria = 'MISIS' | 'MINE' | 'MATI' | 'MESI' | 'MAIA' | 'MISO';
+export type ClasificacionMaestria =
+  | 'Fundamentación'
+  | 'Profundización'
+  | 'Complemento';
+
+export interface DiscCourse {
+  codigo: string;
+  nombre: string;
+  creditos: number;
+  area: string;
+  clasificaciones: { maestria: Maestria; tipo: ClasificacionMaestria }[];
+}
+
+export interface DiscCatalog {
+  cursos: DiscCourse[];
+  maestrias: { codigo: Maestria; nombre: string }[];
+  creditosPosgradoObjetivo: number;
+}
+
 /** ---- Auditor de grado ---- */
 export interface DegreeAuditState {
   id: string;
@@ -260,8 +296,10 @@ export interface DegreeAuditState {
 
 export interface DegreeProgress {
   creditosAprobados: number;
+  creditosEnCurso: number;
   creditosTotales: number;
   porcentajeAvance: number;
+  porcentajeEnCurso: number;
   cbusTotales: number;
   cbusCompletados: number;
   clesTotales: number;
@@ -285,6 +323,7 @@ export interface UpdateDegreeAudit {
   cursoTipoEpsilon?: string | null;
   internacionalizacion?: boolean;
   aprobadas?: string[];
+  enCurso?: string[];
 }
 
 /** ---- Importación de syllabus ---- */

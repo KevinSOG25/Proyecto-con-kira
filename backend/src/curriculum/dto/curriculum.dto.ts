@@ -125,4 +125,30 @@ export class UpdateDegreeAuditDto {
   @IsArray()
   @IsString({ each: true })
   aprobadas?: string[];
+
+  /** Códigos de materias en curso (para el tercer estado de la barra). */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enCurso?: string[];
+}
+
+/** Entrada para la proyección con IA del próximo semestre. */
+export class ProjectSemesterDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aprobadas?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enCurso?: string[];
+
+  /** Créditos objetivo para el próximo semestre (ej. 16-18). */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  creditosObjetivo?: number;
 }
