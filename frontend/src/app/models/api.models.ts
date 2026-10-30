@@ -255,6 +255,9 @@ export interface GeminiProjectionCourse {
 
 export interface GeminiProjection {
   materias: GeminiProjectionCourse[];
+  /** Suma de créditos de las materias proyectadas (fuente de verdad). */
+  creditosProyectados?: number;
+  /** Alias retrocompatible. */
   creditosTotales: number;
   creditosObjetivo?: number;
   justificacion: string;

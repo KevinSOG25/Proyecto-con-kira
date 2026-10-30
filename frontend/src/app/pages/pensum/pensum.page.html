@@ -694,10 +694,13 @@
         </div>
       } @else if (aiProjection(); as proj) {
         <div class="ai-summary">
-          <span class="ai-credits tabular-nums">{{ proj.creditosTotales }} créditos</span>
+          <span class="ai-credits tabular-nums">
+            {{ proj.creditosProyectados ?? proj.creditosTotales }} créditos
+          </span>
           @if (proj.creditosObjetivo) {
             <span class="text-muted small">· objetivo {{ proj.creditosObjetivo }}</span>
           }
+          <span class="ai-count text-muted small">· {{ proj.materias.length }} materias</span>
           @if (proj.generadoPorIA) {
             <span class="ai-badge">Generado por {{ proj.provider || 'Gemini' }}</span>
           }
