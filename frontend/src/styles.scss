@@ -295,19 +295,47 @@ h1, h2, h3, h4, h5, h6,
   z-index: 1030;
 }
 
+/* Alineación vertical uniforme de todos los ítems de la barra. */
+.navbar.app-navbar > .container {
+  display: flex;
+  align-items: center;
+}
+
 .navbar.app-navbar .navbar-brand {
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--as-text);
+  white-space: nowrap;
+}
+
+/* Lista de navegación centrada verticalmente y sin saltos de línea. */
+.navbar.app-navbar .navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.navbar.app-navbar .navbar-nav .nav-item {
+  display: flex;
+  align-items: center;
 }
 
 .navbar.app-navbar .navbar-nav .nav-link {
+  display: inline-flex;
+  align-items: center;
+  /* Altura uniforme para compartir la misma línea base central con los
+     botones de la derecha (incluido el pill activo). */
+  min-height: 2.2rem;
+  line-height: 1;
   color: var(--as-text-muted);
   font-weight: 600;
   font-size: 0.9rem;
   border-radius: 999px;
-  padding: 0.4rem 0.95rem;
-  margin: 0 0.1rem;
+  /* Padding lateral reducido para que todos los ítems quepan holgados. */
+  padding: 0.25rem 0.6rem;
+  margin: 0;
+  /* Evita que "Centro de IA" se parta en dos líneas. */
+  white-space: nowrap;
   transition: background 0.18s ease, color 0.18s ease;
 }
 
@@ -319,6 +347,19 @@ h1, h2, h3, h4, h5, h6,
 .navbar.app-navbar .navbar-nav .nav-link.active {
   color: var(--as-accent-strong);
   background: var(--as-accent-soft);
+}
+
+/* Controles de la derecha (tema, sesión, botones) sobre la misma línea. */
+.navbar.app-navbar .navbar-collapse > .d-flex {
+  display: flex;
+  align-items: center;
+}
+
+.navbar.app-navbar .navbar-nav .nav-link,
+.navbar.app-navbar .btn,
+.navbar.app-navbar .auth-pill,
+.navbar.app-navbar .theme-toggle {
+  white-space: nowrap;
 }
 
 .navbar.app-navbar .navbar-toggler {
