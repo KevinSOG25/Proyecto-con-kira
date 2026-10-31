@@ -30,6 +30,15 @@ export class Subject {
   @Column({ type: 'varchar', length: 20, nullable: true })
   semestre: string;
 
+  /**
+   * Indica si la materia pertenece al semestre en curso (activo) o si ya fue
+   * archivada al cerrar un periodo. Las vistas vivas (Dashboard, horarios,
+   * tareas) solo muestran materias con activo = true. Nunca se borra: al
+   * cerrar un semestre se marca activo = false y queda recuperable.
+   */
+  @Column({ type: 'boolean', default: true })
+  activo: boolean;
+
   @OneToMany(() => Task, (task) => task.subject, { cascade: true })
   tasks: Task[];
 

@@ -3,9 +3,23 @@
     <h2 class="page-title mb-1">Dashboard</h2>
     <p class="text-muted mb-0">Resumen estadístico de tu semestre.</p>
   </div>
-  <button class="btn btn-outline-primary btn-sm" (click)="load()" [disabled]="loading()">
-    Actualizar
-  </button>
+  <div class="d-flex align-items-center gap-2">
+    <button
+      class="btn btn-outline-primary btn-sm"
+      (click)="load()"
+      [disabled]="loading()"
+    >
+      Actualizar
+    </button>
+    <button
+      class="btn btn-primary btn-sm"
+      (click)="abrirCierre()"
+      [disabled]="loading() || !data() || (data()?.materias?.length ?? 0) === 0"
+      title="Cerrar y archivar el semestre actual"
+    >
+      🎓 Cerrar y Archivar Semestre
+    </button>
+  </div>
 </div>
 
 @if (error()) {
@@ -378,6 +392,129 @@
         <div class="card"><div class="card-body text-center text-muted">
           No hay materias registradas.
         </div></div>
+      </div>
+    }
+  </div>
+}
+
+<!-- ===================== MODAL CERRAR Y ARCHIVAR SEMESTRE ===================== -->
+@if (cierreModalOpen()) {
+  <div class="modal-backdrop-cierre" (click)="cerrarModalCierre()"></div>
+  <div class="modal-cierre" role="dialog" aria-modal="true">
+    <div class="mc-head">
+      <h2>🎓 Cerrar y Archivar Semestre</h2>
+      <button class="icon-btn" (click)="cerrarModalCierre()" aria-label="Cerrar">✕</button>
+    </div>
+
+    @if (!cierreResult()) {
+      <!-- Paso 1: confirmar notas finales -->
+      <div class="mc-body">
+        @if (cierreError()) {
+          <div class="alert alert-danger py-2">{{ cierreError() }}</div>
+        }
+
+        <label class="mc-field">
+          <span>Periodo que se cierra</span>
+          <input
+            type="text"
+            class="form-control"
+            [ngModel]="cierrePeriodo()"
+            (ngModelChange)="cierrePeriodo.set($event)"
+            placeholder="2026-2"
+          />
+        </label>
+
+        <p class="mc-hint">
+          Confirma o ajusta la nota final definitiva de cada materia. Las
+          materias con nota ≥ 3.0 se añadirán como aprobadas a tu pensum.
+        </p>
+
+        <div class="mc-table">
+          <div class="mc-row mc-row--head">
+            <span>Materia</span>
+            <span>Créditos</span>
+            <span>Nota final</span>
+          </div>
+          @for (r of cierreRows(); track r.materiaId) {
+            <div class="mc-row" [class.mc-row--reprobada]="r.notaFinal < 3">
+              <span class="mc-mat">
+                @if (r.codigo) { <strong>{{ r.codigo }}</strong> · }{{ r.nombre }}
+              </span>
+              <span>{{ r.creditos }}</span>
+              <span>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  class="form-control form-control-sm mc-nota"
+                  [ngModel]="r.notaFinal"
+                  (ngModelChange)="setCierreNota(r.materiaId, $event)"
+                />
+              </span>
+            </div>
+          }
+        </div>
+
+        <div class="mc-summary">
+          <div>
+            <span class="mc-label">Promedio semestral</span>
+            <span class="mc-prom">{{ promedioCierre().toFixed(2) }}</span>
+          </div>
+          <div>
+            <span class="mc-label">Créditos aprobados</span>
+            <span>{{ creditosAprobadosCierre() }} / {{ creditosCierre() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mc-foot">
+        <button class="btn btn-outline-secondary" (click)="cerrarModalCierre()" [disabled]="cierreSaving()">
+          Cancelar
+        </button>
+        <button class="btn btn-primary" (click)="confirmarCierre()" [disabled]="cierreSaving()">
+          {{ cierreSaving() ? 'Archivando…' : 'Cerrar Semestre y Guardar en Historial' }}
+        </button>
+      </div>
+    } @else {
+      <!-- Paso 2: éxito + caminos para el nuevo semestre -->
+      <div class="mc-body mc-body--success">
+        <div class="mc-success-icon">✅</div>
+        <h3>{{ cierreResult()!.mensaje }}</h3>
+        <ul class="mc-stats">
+          <li><strong>Promedio final:</strong> {{ cierreResult()!.promedioFinal.toFixed(2) }}</li>
+          <li><strong>Créditos aprobados:</strong> {{ cierreResult()!.creditosAprobados }} / {{ cierreResult()!.creditosCursados }}</li>
+          <li><strong>Materias archivadas:</strong> {{ cierreResult()!.materiasArchivadas }}</li>
+        </ul>
+
+        <p class="mc-hint">Elige cómo preparar el nuevo periodo:</p>
+
+        <label class="mc-field">
+          <span>Nuevo periodo</span>
+          <input
+            type="text"
+            class="form-control"
+            [ngModel]="nuevoPeriodo()"
+            (ngModelChange)="nuevoPeriodo.set($event)"
+            placeholder="2027-1"
+          />
+        </label>
+
+        <div class="mc-caminos">
+          <button class="btn btn-outline-primary" (click)="comenzarEnBlanco()">
+            Comenzar nuevo semestre en blanco
+          </button>
+          <button class="btn btn-primary" (click)="cargarConIA()">
+            Cargar materias proyectadas con IA
+          </button>
+        </div>
+      </div>
+
+      <div class="mc-foot">
+        <button class="btn btn-link" (click)="verHistorial()">Ver Historial →</button>
+        <button class="btn btn-outline-secondary" (click)="cerrarModalCierre()">
+          Cerrar
+        </button>
       </div>
     }
   </div>

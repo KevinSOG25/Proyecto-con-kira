@@ -1,0 +1,142 @@
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <div>
+    <h2 class="page-title mb-1">🗂️ Historial de Semestres</h2>
+    <p class="text-muted mb-0">
+      Tus semestres archivados con promedios históricos y evolución del PGA.
+    </p>
+  </div>
+  <button class="btn btn-outline-primary btn-sm" (click)="load()" [disabled]="loading()">
+    Actualizar
+  </button>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger">{{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="alert alert-success">{{ mensaje() }}</div>
+}
+
+@if (loading()) {
+  <div class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Cargando historial…</p>
+  </div>
+} @else if (data(); as d) {
+
+  @if (!hayHistorial()) {
+    <div class="card">
+      <div class="card-body text-center text-muted py-5">
+        <div class="empty-icon">📭</div>
+        <p class="mb-1">Aún no has cerrado ningún semestre.</p>
+        <p class="mb-3">Cuando cierres un periodo desde el Dashboard, aparecerá aquí.</p>
+        <button class="btn btn-primary btn-sm" (click)="irADashboard()">
+          Ir al Dashboard
+        </button>
+      </div>
+    </div>
+  } @else {
+
+    <!-- Resumen global -->
+    <div class="row g-3 mb-4">
+      <div class="col-sm-4">
+        <div class="stat-card">
+          <span class="stat-label">Semestres cursados</span>
+          <span class="stat-value">{{ d.totalSemestres }}</span>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="stat-card">
+          <span class="stat-label">PGA global</span>
+          <span class="stat-value accent">{{ d.pgaGlobal.toFixed(2) }}</span>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="stat-card">
+          <span class="stat-label">Créditos aprobados</span>
+          <span class="stat-value">{{ d.creditosAprobadosTotales }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráfica comparativa -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h3 class="chart-title">Evolución: promedio semestral vs. PGA acumulado</h3>
+        <div class="chart-wrap">
+          <canvas
+            baseChart
+            [type]="'line'"
+            [data]="lineChartData()"
+            [options]="lineChartOptions()"
+          ></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Línea de tiempo / acordeón -->
+    <div class="timeline">
+      @for (s of d.semestres; track s.id) {
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-card">
+            <button class="tl-head" (click)="toggle(s.periodo)">
+              <div class="tl-periodo">
+                <span class="tl-badge">{{ s.periodo }}</span>
+                <span class="tl-fecha">
+                  Cerrado el {{ s.fechaCierre | date: 'd MMM y' }}
+                </span>
+              </div>
+              <div class="tl-metrics">
+                <span class="tl-prom" [ngClass]="notaClase(s.promedioFinal)">
+                  {{ s.promedioFinal.toFixed(2) }}
+                </span>
+                <span class="tl-cred">
+                  {{ s.creditosAprobados }}/{{ s.creditosCursados }} cr.
+                </span>
+                <span class="tl-chevron">{{ isOpen(s.periodo) ? '▲' : '▼' }}</span>
+              </div>
+            </button>
+
+            @if (isOpen(s.periodo)) {
+              <div class="tl-body">
+                <div class="tl-table">
+                  <div class="tl-row tl-row--head">
+                    <span>Materia</span>
+                    <span>Créditos</span>
+                    <span>Nota</span>
+                    <span>Estado</span>
+                  </div>
+                  @for (m of s.materias; track m.materiaId) {
+                    <div class="tl-row">
+                      <span class="tl-mat">
+                        @if (m.codigo) { <strong>{{ m.codigo }}</strong> · }{{ m.nombre }}
+                      </span>
+                      <span>{{ m.creditos }}</span>
+                      <span [ngClass]="notaClase(m.notaFinal)">
+                        {{ m.notaFinal.toFixed(2) }}
+                      </span>
+                      <span>
+                        @if (m.aprobada) {
+                          <span class="chip chip--ok">Aprobada</span>
+                        } @else {
+                          <span class="chip chip--no">Reprobada</span>
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+
+                <div class="tl-actions">
+                  <button class="btn btn-sm btn-outline-secondary" (click)="reabrir(s)">
+                    ↩︎ Reabrir este semestre
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

@@ -15,12 +15,24 @@ import { finalize } from 'rxjs';
 import { AnalyticsService } from '../../services/analytics.service';
 import { SubjectSelectionService } from '../../services/subject-selection.service';
 import { ThemeService } from '../../services/theme.service';
+import { CurriculumService } from '../../services/curriculum.service';
+import { ScheduleAiService } from '../../services/schedule-ai.service';
 import {
+  CloseSemesterResult,
   DashboardAnalytics,
   EffortMatrixItem,
   PriorityLevel,
   SubjectGrade,
 } from '../../models/api.models';
+
+/** Fila editable de nota final en el modal de cierre. */
+interface CierreRow {
+  materiaId: string;
+  nombre: string;
+  codigo: string | null;
+  creditos: number;
+  notaFinal: number;
+}
 
 const NOTA_MAXIMA = 5;
 
@@ -37,6 +49,18 @@ export class DashboardPage implements OnInit {
   private subjectSelection = inject(SubjectSelectionService);
   private router = inject(Router);
   private theme = inject(ThemeService);
+  private curriculumService = inject(CurriculumService);
+  private scheduleAi = inject(ScheduleAiService);
+
+  // ---- Cierre y archivado de semestre ----
+  cierreModalOpen = signal(false);
+  cierrePeriodo = signal(this.periodoActual());
+  cierreRows = signal<CierreRow[]>([]);
+  cierreSaving = signal(false);
+  cierreError = signal<string | null>(null);
+  /** Resultado del cierre (habilita los dos caminos: en blanco / con IA). */
+  cierreResult = signal<CloseSemesterResult | null>(null);
+  nuevoPeriodo = signal(this.siguientePeriodo());
 
   data = signal<DashboardAnalytics | null>(null);
   loading = signal(false);
@@ -455,5 +479,135 @@ export class DashboardPage implements OnInit {
       clase: 'nm-mid',
       texto: `Necesitas ${req.toFixed(2)} en el ${m.porcentajeRestante}% restante`,
     };
+  }
+
+  // ============================================================
+  //  Cierre y archivado de semestre (ciclo multi-semestre)
+  // ============================================================
+
+  /** Periodo actual en formato "AÑO-N" (ene–jun => 1, jul–dic => 2). */
+  private periodoActual(d = new Date()): string {
+    return `${d.getFullYear()}-${d.getMonth() < 6 ? 1 : 2}`;
+  }
+
+  /** Periodo siguiente al actual (para precargar el nuevo semestre). */
+  private siguientePeriodo(d = new Date()): string {
+    const year = d.getFullYear();
+    const p = d.getMonth() < 6 ? 1 : 2;
+    return p === 1 ? `${year}-2` : `${year + 1}-1`;
+  }
+
+  /** Abre el modal de cierre, precargando las notas finales desde el dashboard. */
+  abrirCierre(): void {
+    const d = this.data();
+    if (!d) return;
+    const rows: CierreRow[] = d.materias.map((m) => ({
+      materiaId: m.materiaId,
+      nombre: m.nombre,
+      codigo: m.codigo,
+      creditos: m.creditos,
+      // Nota final sugerida: la neta acumulada (cierra lo no evaluado en 0).
+      notaFinal: Number(m.notaAcumulada.toFixed(2)),
+    }));
+    this.cierreRows.set(rows);
+    this.cierrePeriodo.set(this.periodoActual());
+    this.nuevoPeriodo.set(this.siguientePeriodo());
+    this.cierreError.set(null);
+    this.cierreResult.set(null);
+    this.cierreModalOpen.set(true);
+  }
+
+  cerrarModalCierre(): void {
+    this.cierreModalOpen.set(false);
+    this.cierreSaving.set(false);
+  }
+
+  setCierreNota(materiaId: string, value: number | string): void {
+    const n = Math.max(0, Math.min(5, Number(value) || 0));
+    this.cierreRows.update((rows) =>
+      rows.map((r) => (r.materiaId === materiaId ? { ...r, notaFinal: n } : r)),
+    );
+  }
+
+  /** Promedio ponderado por créditos de las notas finales del modal. */
+  promedioCierre(): number {
+    const rows = this.cierreRows();
+    let sp = 0;
+    let sc = 0;
+    for (const r of rows) {
+      sp += r.notaFinal * r.creditos;
+      sc += r.creditos;
+    }
+    return sc > 0 ? Number((sp / sc).toFixed(2)) : 0;
+  }
+
+  creditosCierre(): number {
+    return this.cierreRows().reduce((acc, r) => acc + r.creditos, 0);
+  }
+
+  creditosAprobadosCierre(): number {
+    return this.cierreRows()
+      .filter((r) => r.notaFinal >= 3.0)
+      .reduce((acc, r) => acc + r.creditos, 0);
+  }
+
+  /** Confirma el cierre: envía notas finales y archiva el semestre. */
+  confirmarCierre(): void {
+    const periodo = this.cierrePeriodo().trim();
+    if (!periodo) {
+      this.cierreError.set('Indica el periodo que estás cerrando.');
+      return;
+    }
+    const notasFinales: Record<string, number> = {};
+    for (const r of this.cierreRows()) {
+      notasFinales[r.materiaId] = r.notaFinal;
+    }
+
+    this.cierreSaving.set(true);
+    this.cierreError.set(null);
+    this.curriculumService
+      .closeSemester({ periodo, notasFinales })
+      .pipe(finalize(() => this.cierreSaving.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.cierreResult.set(res);
+          // Limpia las vistas vivas: el dashboard recarga y queda vacío.
+          this.load();
+        },
+        error: (err) => {
+          this.cierreError.set(
+            err?.error?.message ??
+              'No se pudo cerrar el semestre. Intenta de nuevo.',
+          );
+        },
+      });
+  }
+
+  /** Camino 1: comenzar nuevo semestre en blanco. */
+  comenzarEnBlanco(): void {
+    const periodo = this.nuevoPeriodo().trim() || this.siguientePeriodo();
+    this.curriculumService.startSemester({ periodo, materias: [] }).subscribe({
+      next: () => {
+        this.cerrarModalCierre();
+        this.load();
+      },
+      error: () => {
+        // startSemester en blanco no crea nada; cerrar el modal igualmente.
+        this.cerrarModalCierre();
+        this.load();
+      },
+    });
+  }
+
+  /** Camino 2: ir al Pensum a proyectar la carga con IA. */
+  cargarConIA(): void {
+    this.cerrarModalCierre();
+    this.router.navigate(['/pensum']);
+  }
+
+  /** Ver el historial de semestres cerrados. */
+  verHistorial(): void {
+    this.cerrarModalCierre();
+    this.router.navigate(['/historial']);
   }
 }

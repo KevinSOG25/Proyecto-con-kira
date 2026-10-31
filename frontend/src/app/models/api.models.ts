@@ -6,6 +6,8 @@ export interface Subject {
   codigo?: string;
   creditos: number;
   semestre?: string;
+  /** false = archivada al cerrar un semestre; las vistas vivas filtran activo=true. */
+  activo?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -338,4 +340,89 @@ export interface ImportSubjectPayload {
   creditos?: number | null;
   semestre?: string | null;
   evaluaciones: EvaluacionExtraida[];
+}
+
+
+/** ---- Ciclo de vida multi-semestre ---- */
+export interface SnapshotEvaluacion {
+  nombreCorte: string;
+  porcentaje: number;
+  calificacionObtenida: number | null;
+}
+
+export interface SnapshotMateria {
+  materiaId: string;
+  codigo: string | null;
+  nombre: string;
+  creditos: number;
+  notaFinal: number;
+  aprobada: boolean;
+  evaluaciones: SnapshotEvaluacion[];
+}
+
+export interface SnapshotBloqueHorario {
+  materia: string;
+  codigo: string | null;
+  tipo: string;
+  inicio: string;
+  fin: string;
+}
+
+export interface SemesterHistoryEntry {
+  id: string;
+  periodo: string;
+  fechaCierre: string;
+  promedioFinal: number;
+  creditosCursados: number;
+  creditosAprobados: number;
+  /** PGA acumulado hasta ese periodo (inclusive). */
+  pgaAcumulado: number;
+  materias: SnapshotMateria[];
+  horario: SnapshotBloqueHorario[];
+}
+
+export interface SemesterHistoryResponse {
+  semestres: SemesterHistoryEntry[];
+  totalSemestres: number;
+  pgaGlobal: number;
+  creditosAprobadosTotales: number;
+}
+
+export interface CloseSemesterPayload {
+  periodo: string;
+  notasFinales?: Record<string, number>;
+  snapshotHorario?: SnapshotBloqueHorario[];
+}
+
+export interface CloseSemesterResult {
+  periodo: string;
+  promedioFinal: number;
+  creditosCursados: number;
+  creditosAprobados: number;
+  materiasArchivadas: number;
+  aprobadas: string[];
+  mensaje: string;
+}
+
+export interface StartSemesterPayload {
+  periodo: string;
+  materias?: string[];
+}
+
+export interface StartSemesterResult {
+  periodo: string;
+  creadas: { id: string; codigo: string; nombre: string; creditos: number }[];
+  total: number;
+  mensaje: string;
+}
+
+export interface ReopenSemesterResult {
+  periodo: string;
+  mensaje: string;
+}
+
+export interface ApprovedCourseDto {
+  codigo: string;
+  periodo: string;
+  notaFinal: number | null;
 }
