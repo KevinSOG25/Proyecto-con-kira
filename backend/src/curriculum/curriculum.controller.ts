@@ -10,17 +10,23 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurriculumService } from './curriculum.service';
+import { SemesterService } from './semester.service';
 import {
+  CloseSemesterDto,
   CreateCurriculumItemDto,
   ProjectSemesterDto,
   SimulateNextSemesterDto,
+  StartSemesterDto,
   UpdateCurriculumItemDto,
   UpdateDegreeAuditDto,
 } from './dto/curriculum.dto';
 
 @Controller('curriculum')
 export class CurriculumController {
-  constructor(private readonly curriculumService: CurriculumService) {}
+  constructor(
+    private readonly curriculumService: CurriculumService,
+    private readonly semesterService: SemesterService,
+  ) {}
 
   /** Lista el pensum completo + créditos por semestre + equivalencias. */
   @Get()
@@ -70,6 +76,42 @@ export class CurriculumController {
   @Post('project-semester')
   projectSemester(@Body() dto: ProjectSemesterDto) {
     return this.curriculumService.projectWithGemini(dto);
+  }
+
+  // ===================== Ciclo de vida multi-semestre =====================
+
+  /**
+   * Cierra y archiva el semestre actual: consolida el snapshot, marca las
+   * materias aprobadas (nota >= 3.0) en el pensum y archiva (activo=false)
+   * las materias activas sin borrarlas.
+   */
+  @Post('close-semester')
+  closeSemester(@Body() dto: CloseSemesterDto) {
+    return this.semesterService.closeSemester(dto);
+  }
+
+  /** Historial ordenado de semestres cerrados con promedios y desglose. */
+  @Get('history')
+  history() {
+    return this.semesterService.history();
+  }
+
+  /** Materias aprobadas persistidas (para sincronizar el estado del pensum). */
+  @Get('approved-courses')
+  approvedCourses() {
+    return this.semesterService.approvedCourses();
+  }
+
+  /** Inicia un nuevo semestre: vacío o precargado con códigos del pensum. */
+  @Post('start-semester')
+  startSemester(@Body() dto: StartSemesterDto) {
+    return this.semesterService.startSemester(dto);
+  }
+
+  /** Reabre un semestre archivado (deshace el cierre y reactiva materias). */
+  @Post('reopen-semester')
+  reopenSemester(@Body('periodo') periodo: string) {
+    return this.semesterService.reopenSemester(periodo);
   }
 
   @Post()

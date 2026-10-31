@@ -162,7 +162,10 @@ export class AnalyticsService {
   }
 
   async getDashboard(): Promise<DashboardAnalytics> {
+    // Solo materias del semestre en curso (activas). Las archivadas al cerrar
+    // un periodo (activo=false) no afectan el Dashboard del nuevo semestre.
     const subjects = await this.subjectsRepo.find({
+      where: { activo: true },
       order: { createdAt: 'ASC' },
     });
 
