@@ -1,0 +1,375 @@
+:host {
+  display: block;
+}
+
+.cal-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--as-text);
+  }
+
+  .muted {
+    margin: 0.25rem 0 0;
+    color: var(--as-text-muted);
+    font-size: 0.9rem;
+  }
+}
+
+/* ---------- Toolbar ---------- */
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: var(--as-surface);
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius);
+  padding: 0.6rem 0.9rem;
+  box-shadow: var(--as-shadow-xs);
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  .period-label {
+    margin-left: 0.5rem;
+    font-weight: 600;
+    color: var(--as-text);
+    text-transform: capitalize;
+  }
+
+  .btn-today {
+    border: 1px solid var(--as-border-strong);
+    background: var(--as-surface-sunken);
+    color: var(--as-text);
+  }
+}
+
+.toggles {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+
+  .btn-group .btn {
+    border: 1px solid var(--as-border);
+    background: var(--as-surface);
+    color: var(--as-text-muted);
+
+    &.active {
+      background: var(--as-accent-soft);
+      color: var(--as-accent-strong);
+      border-color: var(--as-accent);
+      font-weight: 600;
+    }
+  }
+}
+
+/* ---------- Leyenda ---------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--as-text-muted);
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .dot {
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    display: inline-block;
+  }
+}
+
+.loading-row {
+  color: var(--as-text-muted);
+  padding: 0.5rem 0;
+}
+
+/* ============ VISTA MES ============ */
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--as-border);
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius);
+  overflow: hidden;
+
+  .dow {
+    background: var(--as-surface-sunken);
+    color: var(--as-text-subtle);
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.4rem 0;
+  }
+
+  .day-cell {
+    background: var(--as-surface);
+    min-height: 104px;
+    padding: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: background 0.12s ease;
+
+    &:hover {
+      background: var(--as-surface-sunken);
+    }
+    &.out-month {
+      opacity: 0.45;
+    }
+    &.today {
+      box-shadow: inset 0 0 0 2px var(--as-accent);
+    }
+
+    .day-num {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--as-text);
+      align-self: flex-end;
+    }
+
+    .day-events {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      overflow: hidden;
+    }
+  }
+}
+
+.chip {
+  border: none;
+  border-radius: var(--as-radius-sm);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  padding: 0.15rem 0.35rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+
+  .chip-time {
+    font-weight: 700;
+    opacity: 0.9;
+    margin-right: 0.25rem;
+  }
+  &.google {
+    border: 1px dashed rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* ============ VISTA SEMANA ============ */
+.week-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(7, 1fr);
+  background: var(--as-surface);
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius);
+  overflow: hidden;
+
+  .week-head {
+    padding: 0.4rem;
+    text-align: center;
+    border-bottom: 1px solid var(--as-border);
+    border-left: 1px solid var(--as-border);
+    background: var(--as-surface-sunken);
+
+    &.gutter {
+      border-left: none;
+    }
+    &.today {
+      color: var(--as-accent-strong);
+      background: var(--as-accent-soft);
+    }
+    .wd-name {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      color: var(--as-text-subtle);
+    }
+    .wd-num {
+      font-weight: 700;
+      color: var(--as-text);
+    }
+  }
+
+  .week-body {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 56px repeat(7, 1fr);
+    position: relative;
+  }
+
+  .hours-col {
+    .hour-row {
+      height: 48px;
+      border-bottom: 1px solid var(--as-border);
+      position: relative;
+
+      span {
+        position: absolute;
+        top: -0.6rem;
+        right: 0.3rem;
+        font-size: 0.68rem;
+        color: var(--as-text-subtle);
+      }
+    }
+  }
+
+  .day-col {
+    position: relative;
+    border-left: 1px solid var(--as-border);
+    cursor: pointer;
+
+    &.today {
+      background: color-mix(in srgb, var(--as-accent) 7%, transparent);
+    }
+    .hour-slot {
+      height: 48px;
+      border-bottom: 1px solid var(--as-border);
+    }
+  }
+
+  .week-event {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    border: none;
+    border-radius: var(--as-radius-sm);
+    color: #fff;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    padding: 0.15rem 0.3rem;
+    text-align: left;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--as-shadow-sm);
+
+    strong {
+      display: block;
+      font-size: 0.66rem;
+    }
+    &.google {
+      border: 1px dashed rgba(255, 255, 255, 0.55);
+    }
+  }
+}
+
+/* ============ MODAL ============ */
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1050;
+}
+
+.modal-custom {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  background: var(--as-surface);
+  border: 1px solid var(--as-border);
+  border-radius: var(--as-radius);
+  box-shadow: var(--as-shadow-lg);
+  z-index: 1051;
+
+  .modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--as-border);
+
+    h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      color: var(--as-text);
+    }
+    .icon-btn {
+      border: none;
+      background: transparent;
+      font-size: 1.1rem;
+      color: var(--as-text-muted);
+      cursor: pointer;
+    }
+  }
+
+  .modal-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+
+    span {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--as-text-muted);
+    }
+  }
+
+  .field-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .modal-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--as-border);
+
+    .flex-spacer {
+      flex: 1;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .month-grid .day-cell {
+    min-height: 76px;
+  }
+  .week-grid {
+    font-size: 0.7rem;
+  }
+}

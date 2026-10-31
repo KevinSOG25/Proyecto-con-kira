@@ -13,6 +13,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { WeeklyPlansModule } from './weekly-plans/weekly-plans.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
+import { SchedulesModule } from './schedules/schedules.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CurriculumModule } from './curriculum/curriculum.module';
     WeeklyPlansModule,
     AnalyticsModule,
     CurriculumModule,
+    SchedulesModule,
   ],
 })
 export class AppModule {}

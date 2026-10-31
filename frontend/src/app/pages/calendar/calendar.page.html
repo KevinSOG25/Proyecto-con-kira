@@ -1,0 +1,278 @@
+<section class="cal-page">
+  <header class="cal-header">
+    <div class="cal-title">
+      <h1>📆 Calendario</h1>
+      <p class="muted">
+        Tu calendario local de AcademicSync conviviendo con Google Calendar.
+      </p>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()">
+      <span class="me-1">＋</span> Nueva actividad
+    </button>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-danger py-2">{{ error() }}</div>
+  }
+
+  <!-- Controles -->
+  <div class="cal-toolbar">
+    <div class="nav-group">
+      <button class="btn btn-sm btn-outline-secondary" (click)="prev()" title="Anterior">‹</button>
+      <button class="btn btn-sm btn-today" (click)="hoy()">Hoy</button>
+      <button class="btn btn-sm btn-outline-secondary" (click)="next()" title="Siguiente">›</button>
+      <span class="period-label">
+        {{ view() === 'month' ? monthLabel() : weekLabel() }}
+      </span>
+    </div>
+
+    <div class="toggles">
+      <!-- Modo de vista -->
+      <div class="btn-group" role="group" aria-label="Vista">
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.active]="view() === 'month'"
+          (click)="setView('month')"
+        >Mes</button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.active]="view() === 'week'"
+          (click)="setView('week')"
+        >Semana</button>
+      </div>
+
+      <!-- Fuente de datos -->
+      <div class="btn-group" role="group" aria-label="Fuente">
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.active]="source() === 'local'"
+          (click)="setSource('local')"
+        >Solo Local</button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.active]="source() === 'google'"
+          (click)="setSource('google')"
+        >Solo Google</button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.active]="source() === 'ambos'"
+          (click)="setSource('ambos')"
+        >Ambos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leyenda de colores -->
+  @if (leyenda().length) {
+    <div class="legend">
+      @for (l of leyenda(); track l.label) {
+        <span class="legend-item">
+          <span class="dot" [style.background]="l.color"></span>{{ l.label }}
+        </span>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-row">Cargando…</div>
+  }
+
+  <!-- ===================== VISTA MES ===================== -->
+  @if (view() === 'month') {
+    <div class="month-grid">
+      @for (d of diasSemana; track d) {
+        <div class="dow">{{ d }}</div>
+      }
+      @for (cell of monthGrid(); track trackCell($index, cell)) {
+        <div
+          class="day-cell"
+          [class.out-month]="!cell.inMonth"
+          [class.today]="cell.isToday"
+          (click)="openCreate(cell.date)"
+        >
+          <div class="day-num">{{ cell.date.getDate() }}</div>
+          <div class="day-events">
+            @for (e of cell.events; track trackEvent($index, e)) {
+              <button
+                type="button"
+                class="chip"
+                [style.background]="e.color"
+                [class.google]="e.source === 'google'"
+                (click)="$event.stopPropagation(); openEdit(e)"
+                [title]="e.titulo"
+              >
+                <span class="chip-time">{{ formatHora(e.inicio) }}</span>
+                {{ e.titulo }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ===================== VISTA SEMANA ===================== -->
+  @if (view() === 'week') {
+    <div class="week-grid">
+      <div class="week-head gutter"></div>
+      @for (day of weekDays(); track trackCell($index, day)) {
+        <div class="week-head" [class.today]="day.isToday">
+          <span class="wd-name">{{ diasSemana[$index] }}</span>
+          <span class="wd-num">{{ day.date.getDate() }}</span>
+        </div>
+      }
+
+      <div class="week-body">
+        <div class="hours-col">
+          @for (h of horas; track h) {
+            <div class="hour-row"><span>{{ h }}:00</span></div>
+          }
+        </div>
+        @for (day of weekDays(); track trackCell($index, day)) {
+          <div
+            class="day-col"
+            [class.today]="day.isToday"
+            (click)="openCreate(day.date)"
+          >
+            @for (h of horas; track h) {
+              <div class="hour-slot"></div>
+            }
+            @for (e of day.events; track trackEvent($index, e)) {
+              <button
+                type="button"
+                class="week-event"
+                [style.background]="e.color"
+                [style.top.%]="eventTop(e)"
+                [style.height.%]="eventHeight(e)"
+                [class.google]="e.source === 'google'"
+                (click)="$event.stopPropagation(); openEdit(e)"
+              >
+                <strong>{{ formatHora(e.inicio) }}</strong> {{ e.titulo }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</section>
+
+<!-- ===================== MODAL CREAR / EDITAR ===================== -->
+@if (modalOpen()) {
+  <div class="modal-backdrop-custom" (click)="closeModal()"></div>
+  <div class="modal-custom" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2>{{ editingId() ? 'Editar actividad' : 'Nueva actividad' }}</h2>
+      <button class="icon-btn" (click)="closeModal()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <label class="field">
+        <span>Nombre</span>
+        <input
+          type="text"
+          class="form-control"
+          [ngModel]="form().titulo"
+          (ngModelChange)="updateForm('titulo', $event)"
+          placeholder="p. ej. Parcial de Cálculo"
+        />
+      </label>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Materia</span>
+          <select
+            class="form-select"
+            [ngModel]="form().materiaId"
+            (ngModelChange)="updateForm('materiaId', $event)"
+          >
+            <option value="">General / Personal</option>
+            @for (s of subjects(); track s.id) {
+              <option [value]="s.id">
+                {{ s.codigo ? s.codigo + ' · ' : '' }}{{ s.nombre }}
+              </option>
+            }
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Tipo</span>
+          <select
+            class="form-select"
+            [ngModel]="form().tipo"
+            (ngModelChange)="updateForm('tipo', $event)"
+          >
+            @for (t of tipos; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Fecha</span>
+          <input
+            type="date"
+            class="form-control"
+            [ngModel]="form().fecha"
+            (ngModelChange)="updateForm('fecha', $event)"
+          />
+        </label>
+        <label class="field">
+          <span>Inicio</span>
+          <input
+            type="time"
+            class="form-control"
+            [ngModel]="form().horaInicio"
+            (ngModelChange)="updateForm('horaInicio', $event)"
+          />
+        </label>
+        <label class="field">
+          <span>Fin</span>
+          <input
+            type="time"
+            class="form-control"
+            [ngModel]="form().horaFin"
+            (ngModelChange)="updateForm('horaFin', $event)"
+          />
+        </label>
+      </div>
+
+      @if (!editingId()) {
+        <label class="field">
+          <span>Destino</span>
+          <select
+            class="form-select"
+            [ngModel]="form().destino"
+            (ngModelChange)="updateForm('destino', $event)"
+          >
+            <option value="local">Solo Local</option>
+            <option value="google">Solo Google</option>
+            <option value="ambos">Ambos</option>
+          </select>
+        </label>
+      }
+    </div>
+
+    <div class="modal-foot">
+      @if (editingId()) {
+        <button class="btn btn-outline-danger" (click)="remove()" [disabled]="saving()">
+          Eliminar
+        </button>
+      }
+      <span class="flex-spacer"></span>
+      <button class="btn btn-outline-secondary" (click)="closeModal()" [disabled]="saving()">
+        Cancelar
+      </button>
+      <button class="btn btn-primary" (click)="save()" [disabled]="!canSave() || saving()">
+        {{ saving() ? 'Guardando…' : (editingId() ? 'Guardar cambios' : 'Crear') }}
+      </button>
+    </div>
+  </div>
+}

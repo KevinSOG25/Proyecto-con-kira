@@ -1,9 +1,11 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { CurriculumService } from '../../services/curriculum.service';
 import { SubjectsService } from '../../services/subjects.service';
+import { ScheduleAiService } from '../../services/schedule-ai.service';
 import { extractHttpErrorMessage } from '../../utils/http-error';
 import {
   CriticalPathNode,
@@ -38,6 +40,8 @@ interface PrereqView {
   styleUrl: './pensum.page.scss',
 })
 export class PensumPage implements OnInit {
+  private router = inject(Router);
+  private scheduleAi = inject(ScheduleAiService);
   private curriculumService = inject(CurriculumService);
   private subjectsService = inject(SubjectsService);
 
@@ -718,6 +722,21 @@ export class PensumPage implements OnInit {
 
   closeAiModal(): void {
     this.aiModalOpen.set(false);
+  }
+
+  /** Puente: lleva las materias proyectadas al Armador de Horarios. */
+  llevarAHorarios(): void {
+    const proj = this.aiProjection();
+    if (!proj) return;
+    this.scheduleAi.setProyectadas(
+      proj.materias.map((m) => ({
+        codigo: m.codigo,
+        nombre: m.nombre,
+        creditos: Number(m.creditos) || 0,
+      })),
+    );
+    this.closeAiModal();
+    this.router.navigate(['/horarios']);
   }
 
   /** Etiqueta del proveedor que resolvió la proyección. */

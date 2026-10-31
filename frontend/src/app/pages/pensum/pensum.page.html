@@ -733,6 +733,11 @@
     </div>
 
     <div class="ai-modal-foot">
+      @if (aiProjection()?.materias?.length) {
+        <button class="btn btn-outline-primary" (click)="llevarAHorarios()">
+          📅 Llevar a Armador de Horarios
+        </button>
+      }
       <button class="btn btn-primary" (click)="closeAiModal()">Entendido</button>
     </div>
   </div>

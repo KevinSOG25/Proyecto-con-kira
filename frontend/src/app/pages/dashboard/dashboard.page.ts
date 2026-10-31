@@ -294,4 +294,166 @@ export class DashboardPage implements OnInit {
     const base = this.promedioNeto();
     return Number((base + this.impactoSimulado(item)).toFixed(2));
   }
+
+  // ============================================================
+  //  Bloque 1 — Simulador Global de Meta Semestral
+  // ============================================================
+  /** Meta de promedio semestral elegida por el usuario (3.0–5.0). */
+  metaPromedio = signal(4.0);
+  /** Resultado del último cálculo inverso. */
+  metaFactible = signal<boolean>(true);
+  metaMensaje = signal<string | null>(null);
+
+  readonly metasRapidas = [
+    { label: 'Pasar raspando', valor: 3.2 },
+    { label: 'Meta alta', valor: 4.0 },
+    { label: 'Excelencia', valor: 4.5 },
+  ];
+
+  setMeta(valor: number | string): void {
+    const v = Math.max(3, Math.min(5, Number(valor) || 0));
+    this.metaPromedio.set(Number(v.toFixed(2)));
+  }
+
+  /** Fija la meta al promedio actual (vista relativa). */
+  metaMantenerActual(): void {
+    this.setMeta(this.promedio() || 4.0);
+    this.calcularNotasNecesarias();
+  }
+
+  /**
+   * Sensibilidad total: cuánto sube el promedio semestral por cada 0.1
+   * adicional repartido uniformemente en TODAS las evaluaciones pendientes.
+   * Σ sensibilidadDecima_i.
+   */
+  private sensibilidadTotal(): number {
+    return (this.data()?.effortMatrix ?? []).reduce(
+      (acc, it) => acc + it.sensibilidadDecima,
+      0,
+    );
+  }
+
+  /** Promedio máximo posible si saca 5.0 en todo lo pendiente. */
+  promedioMaximoPosible(): number {
+    const base = this.promedioNeto();
+    // 5.0 en todos los cortes => suma de impactoMaximoPromedio.
+    const maxExtra = (this.data()?.effortMatrix ?? []).reduce(
+      (acc, it) => acc + it.impactoMaximoPromedio,
+      0,
+    );
+    return Number((base + maxExtra).toFixed(2));
+  }
+
+  /**
+   * Cálculo inverso: dada la meta, halla la nota uniforme mínima necesaria
+   * en las evaluaciones pendientes y ajusta todos los sliders de la Matriz.
+   */
+  calcularNotasNecesarias(): void {
+    const matrix = this.data()?.effortMatrix ?? [];
+    this.metaMensaje.set(null);
+
+    if (matrix.length === 0) {
+      this.metaFactible.set(true);
+      this.metaMensaje.set('No hay evaluaciones pendientes por simular.');
+      return;
+    }
+
+    const base = this.promedioNeto();
+    const meta = this.metaPromedio();
+    const sensTotal = this.sensibilidadTotal(); // sube por cada 0.1 uniforme
+
+    // promedioFinal = base + sensTotal * (nota * 10)  [nota uniforme]
+    //   => nota = (meta - base) / (sensTotal * 10)
+    const denom = sensTotal * 10;
+    if (denom <= 0) {
+      this.metaFactible.set(true);
+      return;
+    }
+    const notaNecesariaRaw = (meta - base) / denom;
+    const notaNecesaria = Number(notaNecesariaRaw.toFixed(2));
+
+    if (notaNecesariaRaw > 5.0 + 1e-9) {
+      // Inalcanzable: fijar todo en 5.0 y avisar el máximo posible.
+      this.aplicarNotaUniforme(5.0);
+      this.metaFactible.set(false);
+      this.metaMensaje.set(
+        `Meta inalcanzable: ni con 5.0 en todo lo pendiente. ` +
+          `El máximo posible es ${this.promedioMaximoPosible().toFixed(2)}.`,
+      );
+      return;
+    }
+
+    const notaAjustada = Math.max(0, Math.min(5, notaNecesaria));
+    this.aplicarNotaUniforme(notaAjustada);
+    this.metaFactible.set(true);
+    if (notaNecesariaRaw <= 0) {
+      this.metaMensaje.set(
+        `¡Meta ya asegurada! Con tus notas actuales superas ${meta.toFixed(2)}.`,
+      );
+    } else {
+      this.metaMensaje.set(
+        `Necesitas un promedio de ${notaAjustada.toFixed(2)} en las evaluaciones pendientes para alcanzar ${meta.toFixed(2)}.`,
+      );
+    }
+  }
+
+  /** Ajusta todos los sliders de la matriz a una nota uniforme. */
+  private aplicarNotaUniforme(nota: number): void {
+    const next: Record<string, number> = {};
+    for (const it of this.data()?.effortMatrix ?? []) {
+      next[it.corteId] = nota;
+    }
+    this.simNotas.set(next);
+  }
+
+  /** Restablece todos los sliders al valor por defecto (4.0). */
+  restablecerSimulacion(): void {
+    this.simNotas.set({});
+    this.metaPromedio.set(4.0);
+    this.metaFactible.set(true);
+    this.metaMensaje.set(null);
+  }
+
+  /** Promedio semestral proyectado con TODAS las notas de los sliders. */
+  promedioSemestralSimulado(): number {
+    const base = this.promedioNeto();
+    const extra = (this.data()?.effortMatrix ?? []).reduce(
+      (acc, it) => acc + it.sensibilidadDecima * this.simNota(it.corteId) * 10,
+      0,
+    );
+    return Number((base + extra).toFixed(2));
+  }
+
+  // ---- Resumen "Nota mínima para pasar (3.0)" por materia ----
+
+  /** Estado de la nota mínima para cerrar la materia en 3.0. */
+  notaMinimaEstado(m: SubjectGrade): {
+    clase: string;
+    texto: string;
+  } {
+    // Ya aprobada neta (aporte >= 3.0 asegurado).
+    if (m.notaAcumulada >= 3.0) {
+      return { clase: 'nm-safe', texto: '¡Ya pasaste! (+3.0 asegurado)' };
+    }
+    if (m.porcentajeRestante <= 0) {
+      return { clase: 'nm-danger', texto: `Cerró en ${m.notaAcumulada.toFixed(2)} (< 3.0)` };
+    }
+    const req = m.notaNecesaria;
+    if (req === null) {
+      return { clase: 'nm-mid', texto: 'Sin datos suficientes' };
+    }
+    if (req > 5.0) {
+      return { clase: 'nm-danger', texto: 'En riesgo crítico (imposible)' };
+    }
+    if (req > 4.2) {
+      return {
+        clase: 'nm-danger',
+        texto: `En riesgo: necesitas ${req.toFixed(2)} en el ${m.porcentajeRestante}% restante`,
+      };
+    }
+    return {
+      clase: 'nm-mid',
+      texto: `Necesitas ${req.toFixed(2)} en el ${m.porcentajeRestante}% restante`,
+    };
+  }
 }
