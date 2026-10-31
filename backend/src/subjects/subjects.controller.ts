@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
 import { CreateSubjectDto } from './dto/create-subject.dto';
@@ -28,9 +29,10 @@ export class SubjectsController {
     return this.subjectsService.importFromSyllabus(dto);
   }
 
+  /** Materias activas del semestre en curso. ?archivadas=true incluye todas. */
   @Get()
-  findAll() {
-    return this.subjectsService.findAll();
+  findAll(@Query('archivadas') archivadas?: string) {
+    return this.subjectsService.findAll(archivadas === 'true');
   }
 
   @Get(':id')

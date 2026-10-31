@@ -85,6 +85,31 @@ export class PensumPage implements OnInit {
       next: (data) => this.subjects.set(data),
     });
     this.loadDiscCatalog();
+    this.syncApprovedFromServer();
+  }
+
+  /**
+   * Sincroniza las materias aprobadas persistidas en el servidor (registradas
+   * al cerrar un semestre) con el estado local del pensum. El servidor es la
+   * fuente de verdad de las aprobadas: sus códigos se marcan como "aprobada".
+   */
+  private syncApprovedFromServer(): void {
+    this.curriculumService.approvedCourses().subscribe({
+      next: (rows) => {
+        if (!rows.length) return;
+        this.manualStatus.update((cur) => {
+          const next = { ...cur };
+          for (const r of rows) {
+            next[r.codigo] = 'aprobada';
+          }
+          return next;
+        });
+        this.persistManualStatus();
+        this.refreshProgress();
+      },
+      // Silencioso: si el backend no está listo, se conserva el estado local.
+      error: () => {},
+    });
   }
 
   load(): void {

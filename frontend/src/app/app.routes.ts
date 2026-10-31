@@ -38,6 +38,11 @@ export const routes: Routes = [
       import('./pages/pensum/pensum.page').then((m) => m.PensumPage),
   },
   {
+    path: 'historial',
+    loadComponent: () =>
+      import('./pages/history/history.page').then((m) => m.HistoryPage),
+  },
+  {
     path: 'ia',
     loadComponent: () =>
       import('./pages/ai-center/ai-center.page').then((m) => m.AiCenterPage),

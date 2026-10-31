@@ -40,8 +40,17 @@ export class SubjectsService {
     return this.subjectsRepo.save(subject);
   }
 
-  findAll(): Promise<Subject[]> {
-    return this.subjectsRepo.find({ order: { createdAt: 'DESC' } });
+  /**
+   * Lista las materias del semestre en curso (activas). Las materias
+   * archivadas al cerrar un periodo (activo=false) quedan fuera de las vistas
+   * vivas; su detalle se consulta en el Historial. Con includeArchivadas=true
+   * se devuelven todas (uso administrativo/depuración).
+   */
+  findAll(includeArchivadas = false): Promise<Subject[]> {
+    return this.subjectsRepo.find({
+      where: includeArchivadas ? {} : { activo: true },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<Subject> {
