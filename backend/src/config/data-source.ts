@@ -8,6 +8,8 @@ import { UserTokens } from '../auth/entities/user-tokens.entity';
 import { WeeklyPlan } from '../weekly-plans/entities/weekly-plan.entity';
 import { CurriculumItem } from '../curriculum/entities/curriculum-item.entity';
 import { DegreeAudit } from '../curriculum/entities/degree-audit.entity';
+import { SemesterHistory } from '../curriculum/entities/semester-history.entity';
+import { ApprovedCourse } from '../curriculum/entities/approved-course.entity';
 import { CalendarActivity } from '../calendar/entities/calendar-activity.entity';
 
 loadEnv();
@@ -35,6 +37,8 @@ export default new DataSource({
     WeeklyPlan,
     CurriculumItem,
     DegreeAudit,
+    SemesterHistory,
+    ApprovedCourse,
     CalendarActivity,
   ],
   migrations: ['src/migrations/*.ts'],
