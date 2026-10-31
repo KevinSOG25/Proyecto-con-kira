@@ -1,12 +1,20 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
+import {
+  ScheduleAiService,
+  ParsedClass,
+  ProjectedSubject,
+} from '../../services/schedule-ai.service';
+import { extractHttpErrorMessage } from '../../utils/http-error';
 
 /** Un bloque horario de una sección. */
 interface Bloque {
   dia: number; // 0=Lun ... 4=Vie (5=Sáb opcional)
   inicio: number; // minutos desde 00:00
   fin: number;
+  salon?: string;
 }
 
 interface Seccion {
@@ -23,6 +31,15 @@ interface Combinacion {
 }
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+/** Mapa de nombres de día (IA) a índice de columna. */
+const DIA_INDEX: Record<string, number> = {
+  lunes: 0, lun: 0,
+  martes: 1, mar: 1,
+  miercoles: 2, 'miércoles': 2, mie: 2, 'mié': 2,
+  jueves: 3, jue: 3,
+  viernes: 4, vie: 4,
+  sabado: 5, 'sábado': 5, sab: 5, 'sáb': 5,
+};
 
 @Component({
   selector: 'app-schedule-page',
@@ -30,12 +47,31 @@ const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   templateUrl: './schedule.page.html',
   styleUrl: './schedule.page.scss',
 })
-export class SchedulePage {
+export class SchedulePage implements OnInit {
+  private scheduleAi = inject(ScheduleAiService);
+
   readonly dias = DIAS;
   /** Horas de la cuadrícula (7:00 a 21:00). */
   readonly horas = Array.from({ length: 15 }, (_, i) => 7 + i);
 
   secciones = signal<Seccion[]>([]);
+
+  /** Materias proyectadas desde el Pensum pendientes de ubicar. */
+  proyectadas = signal<ProjectedSubject[]>([]);
+
+  // --- Importación con IA ---
+  aiModalOpen = signal(false);
+  aiLoading = signal(false);
+  aiTexto = '';
+  aiImagenes = signal<string[]>([]);
+  aiError = signal<string | null>(null);
+  aiProvider = signal<string | null>(null);
+
+  ngOnInit(): void {
+    // Recoge materias proyectadas que vengan del Pensum.
+    const proy = this.scheduleAi.consumeProyectadas();
+    if (proy.length) this.proyectadas.set(proy);
+  }
 
   // Formulario de nueva sección.
   nuevaMateria = '';
@@ -249,5 +285,137 @@ export class SchedulePage {
     const palette = ['#8b5cf6', '#10b981', '#38bdf8', '#f59e0b', '#ef4444', '#6366f1'];
     const idx = this.materias().indexOf(materia);
     return palette[idx % palette.length];
+  }
+
+  removeProyectada(codigo: string): void {
+    this.proyectadas.update((p) => p.filter((x) => x.codigo !== codigo));
+  }
+
+  // ============================================================
+  //  Importación de horario con IA (texto / imágenes)
+  // ============================================================
+  openAiModal(): void {
+    this.aiModalOpen.set(true);
+    this.aiError.set(null);
+    this.aiProvider.set(null);
+  }
+
+  closeAiModal(): void {
+    this.aiModalOpen.set(false);
+  }
+
+  /** Lee archivos (drag&drop / input) a base64. */
+  onFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.addFiles(input.files);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.addFiles(event.dataTransfer?.files ?? null);
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  /** Permite pegar imágenes con Ctrl+V dentro del modal. */
+  onPaste(event: ClipboardEvent): void {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+    for (const it of Array.from(items)) {
+      if (it.type.startsWith('image/')) {
+        const file = it.getAsFile();
+        if (file) this.readFileToBase64(file);
+      }
+    }
+  }
+
+  private addFiles(files: FileList | null): void {
+    if (!files) return;
+    for (const f of Array.from(files)) {
+      if (f.type.startsWith('image/')) this.readFileToBase64(f);
+    }
+  }
+
+  private readFileToBase64(file: File): void {
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.aiImagenes.update((imgs) => [...imgs, reader.result as string]);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeImagen(i: number): void {
+    this.aiImagenes.update((imgs) => imgs.filter((_, idx) => idx !== i));
+  }
+
+  /** Envía texto/imágenes al backend para parsear con IA. */
+  procesarConIA(): void {
+    const texto = this.aiTexto.trim();
+    const imagenes = this.aiImagenes();
+    if (!texto && imagenes.length === 0) {
+      this.aiError.set('Pega texto o agrega al menos una imagen.');
+      return;
+    }
+    this.aiLoading.set(true);
+    this.aiError.set(null);
+    this.scheduleAi
+      .parseAI({ texto: texto || undefined, imagenes })
+      .pipe(finalize(() => this.aiLoading.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.aiProvider.set(res.provider);
+          this.aplicarClasesParseadas(res.clases);
+          this.aiModalOpen.set(false);
+          this.aiTexto = '';
+          this.aiImagenes.set([]);
+        },
+        error: (err) =>
+          this.aiError.set(
+            extractHttpErrorMessage(err, 'No se pudo interpretar el horario.'),
+          ),
+      });
+  }
+
+  /** Convierte las clases parseadas por IA en secciones de la grilla. */
+  private aplicarClasesParseadas(clases: ParsedClass[]): void {
+    const nuevas: Seccion[] = [];
+    for (const c of clases) {
+      const bloques: Bloque[] = [];
+      for (const b of c.bloques ?? []) {
+        const dia = this.diaAIndice(b.dia);
+        if (dia < 0) continue;
+        const inicio = this.toMin(b.horaInicio);
+        const fin = this.toMin(b.horaFin);
+        if (fin <= inicio) continue;
+        bloques.push({ dia, inicio, fin, salon: b.salon });
+      }
+      if (bloques.length === 0) continue;
+      const etiqueta = c.codigo ? `${c.codigo} ${c.nombre}` : c.nombre;
+      nuevas.push({
+        id: crypto.randomUUID(),
+        materia: etiqueta.trim(),
+        seccion: c.seccion || '1',
+        bloques,
+      });
+    }
+    if (nuevas.length) {
+      this.secciones.update((s) => [...s, ...nuevas]);
+    }
+    // Quita de "proyectadas por ubicar" las que ya se poblaron.
+    const codigosImportados = new Set(
+      clases.map((c) => c.codigo?.replace(/[-\s]/g, '').toUpperCase()),
+    );
+    this.proyectadas.update((p) =>
+      p.filter(
+        (x) => !codigosImportados.has(x.codigo.replace(/[-\s]/g, '').toUpperCase()),
+      ),
+    );
+  }
+
+  private diaAIndice(dia: string): number {
+    const key = dia.trim().toLowerCase();
+    return key in DIA_INDEX ? DIA_INDEX[key] : -1;
   }
 }

@@ -46,6 +46,40 @@ export class CalendarService {
     };
   }
 
+  /**
+   * Lista eventos del calendario primary en un rango [desde, hasta].
+   * Devuelve una forma normalizada para el frontend.
+   */
+  async listEvents(
+    desde: Date,
+    hasta: Date,
+  ): Promise<
+    {
+      id: string;
+      titulo: string;
+      inicio: string | null;
+      fin: string | null;
+      allDay: boolean;
+    }[]
+  > {
+    const calendar = await this.getClient();
+    const { data } = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: desde.toISOString(),
+      timeMax: hasta.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 250,
+    });
+    return (data.items ?? []).map((ev) => ({
+      id: ev.id ?? '',
+      titulo: ev.summary ?? '(sin título)',
+      inicio: ev.start?.dateTime ?? ev.start?.date ?? null,
+      fin: ev.end?.dateTime ?? ev.end?.date ?? null,
+      allDay: !ev.start?.dateTime,
+    }));
+  }
+
   /** Crea un evento y devuelve su id. */
   async createEvent(input: CalendarEventInput): Promise<string | null> {
     const calendar = await this.getClient();

@@ -367,3 +367,131 @@
 @media (max-width: 575.98px) {
   .effort-sim { flex-basis: 100%; }
 }
+
+/* ---- Bloque 1: Simulador de Meta Semestral ---- */
+.meta-sim {
+  border: 1px solid var(--as-accent);
+  border-radius: var(--as-radius-sm);
+  background: var(--as-accent-soft);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+}
+.meta-sim-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.meta-sim-title {
+  font-weight: 700;
+  color: var(--as-accent-strong);
+}
+.meta-sim-proj {
+  font-size: 0.82rem;
+  color: var(--as-text);
+}
+.meta-target {
+  max-width: 420px;
+}
+.meta-range {
+  flex: 1 1 auto;
+  accent-color: var(--as-accent);
+}
+.meta-num {
+  width: 80px;
+}
+.meta-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0;
+}
+.meta-chip {
+  border: 1px solid var(--as-border-strong);
+  background: var(--as-surface);
+  color: var(--as-text);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.meta-chip:hover {
+  border-color: var(--as-accent);
+  color: var(--as-accent-strong);
+}
+.meta-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.meta-banner {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--as-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--as-surface);
+  color: var(--as-text);
+  border: 1px solid var(--as-border);
+}
+.meta-banner--err {
+  background: var(--as-danger-soft);
+  color: #a12020;
+  border-color: #f3b4b4;
+}
+
+/* ---- Resumen nota mínima por materia ---- */
+.nm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.nm-card {
+  border: 1px solid var(--as-border);
+  border-left: 4px solid var(--as-border-strong);
+  border-radius: var(--as-radius-sm);
+  background: var(--as-surface);
+  padding: 0.6rem 0.75rem;
+}
+.nm-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.nm-name {
+  font-size: 0.85rem;
+  min-width: 0;
+}
+.nm-code {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--as-text-subtle);
+  flex-shrink: 0;
+}
+.nm-stats {
+  font-size: 0.78rem;
+  margin-top: 0.2rem;
+}
+.nm-msg {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+.nm-card.nm-safe {
+  border-left-color: var(--as-success);
+}
+.nm-card.nm-safe .nm-msg { color: var(--as-success); }
+.nm-card.nm-mid {
+  border-left-color: var(--as-accent);
+}
+.nm-card.nm-mid .nm-msg { color: var(--as-accent-strong); }
+.nm-card.nm-danger {
+  border-left-color: var(--as-danger);
+}
+.nm-card.nm-danger .nm-msg { color: var(--as-danger); }

@@ -1,8 +1,34 @@
-<h2 class="page-title mb-1">Generador de Horarios</h2>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+  <h2 class="page-title mb-0">Generador de Horarios</h2>
+  <button class="btn btn-primary btn-sm" (click)="openAiModal()">
+    ✨ Generar/Importar Horario con IA (Texto o Imagen)
+  </button>
+</div>
 <p class="text-muted mb-4">Arma y optimiza el horario de tu próximo semestre sin choques.</p>
 
 @if (error()) {
   <div class="alert alert-warning">{{ error() }}</div>
+}
+
+<!-- Materias proyectadas por ubicar (puente desde Pensum) -->
+@if (proyectadas().length) {
+  <div class="card mb-4 proy-card">
+    <div class="card-body">
+      <h6 class="fw-bold mb-2">📋 Materias proyectadas por ubicar</h6>
+      <p class="text-muted small mb-2">
+        Vienen de tu proyección del Pensum. Importa sus secciones con IA o agrégalas manualmente.
+      </p>
+      <div class="proy-chips">
+        @for (p of proyectadas(); track p.codigo) {
+          <span class="proy-chip">
+            <span class="tabular-nums">{{ p.codigo }}</span> · {{ p.nombre }}
+            <span class="proy-cred tabular-nums">{{ p.creditos }} cr</span>
+            <button class="proy-x" (click)="removeProyectada(p.codigo)">✕</button>
+          </span>
+        }
+      </div>
+    </div>
+  </div>
 }
 
 <div class="row g-4">
@@ -171,3 +197,66 @@
     </div>
   </div>
 </div>
+
+<!-- Modal: Importación de horario con IA -->
+@if (aiModalOpen()) {
+  <div class="ai-sched-backdrop" (click)="closeAiModal()"></div>
+  <div class="ai-sched-modal" role="dialog" aria-modal="true" (paste)="onPaste($event)">
+    <div class="ai-sched-head">
+      <h5 class="mb-0">✨ Importar horario con IA</h5>
+      <button class="btn-icon" (click)="closeAiModal()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="ai-sched-body">
+      <p class="text-muted small">
+        Pega el texto de la oferta (Banner) y/o sube capturas. La IA extrae materias, secciones y bloques.
+      </p>
+
+      <label class="form-label small mb-1">Texto del horario / oferta</label>
+      <textarea
+        class="form-control mb-3"
+        rows="5"
+        placeholder="Ej: ISIS-2311 Redes - Sec 1 - Lun 11:00-12:20 ML-515 ..."
+        [(ngModel)]="aiTexto"
+      ></textarea>
+
+      <label class="form-label small mb-1">Imágenes (arrastra, pega con Ctrl+V o selecciona)</label>
+      <div
+        class="ai-dropzone"
+        (drop)="onDrop($event)"
+        (dragover)="onDragOver($event)"
+      >
+        <input type="file" accept="image/*" multiple (change)="onFilesSelected($event)" id="aiFiles" hidden />
+        <label for="aiFiles" class="ai-dropzone-label">
+          📎 Arrastra capturas aquí, pégalas (Ctrl+V) o <span class="link">selecciona archivos</span>
+        </label>
+      </div>
+
+      @if (aiImagenes().length) {
+        <div class="ai-thumbs">
+          @for (img of aiImagenes(); track $index) {
+            <div class="ai-thumb">
+              <img [src]="img" alt="captura" />
+              <button class="ai-thumb-x" (click)="removeImagen($index)">✕</button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (aiError()) {
+        <div class="alert alert-warning mt-3 mb-0">{{ aiError() }}</div>
+      }
+    </div>
+
+    <div class="ai-sched-foot">
+      <button class="btn btn-outline-secondary" (click)="closeAiModal()">Cancelar</button>
+      <button class="btn btn-primary" [disabled]="aiLoading()" (click)="procesarConIA()">
+        @if (aiLoading()) {
+          <span class="spinner-border spinner-border-sm me-1"></span> Interpretando…
+        } @else {
+          Aplicar a mi horario
+        }
+      </button>
+    </div>
+  </div>
+}

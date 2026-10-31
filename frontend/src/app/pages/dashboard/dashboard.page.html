@@ -165,6 +165,81 @@
           Dónde conviene invertir tus horas: impacto real de cada evaluación pendiente sobre tu promedio semestral.
         </p>
 
+        <!-- Simulador de Meta Semestral -->
+        <div class="meta-sim">
+          <div class="meta-sim-head">
+            <span class="meta-sim-title">🎯 Simulador de Meta Semestral</span>
+            <span class="meta-sim-proj tabular-nums">
+              Proyectado: <strong>{{ promedioSemestralSimulado() | number: '1.2-2' }}</strong> / 5.0
+            </span>
+          </div>
+
+          <div class="meta-sim-controls">
+            <div class="meta-target">
+              <label class="form-label small mb-1">
+                Meta de promedio: <strong class="tabular-nums">{{ metaPromedio() | number: '1.2-2' }}</strong>
+              </label>
+              <div class="d-flex align-items-center gap-2">
+                <input
+                  type="range" min="3" max="5" step="0.05"
+                  [ngModel]="metaPromedio()" (ngModelChange)="setMeta($event)"
+                  class="form-range meta-range"
+                />
+                <input
+                  type="number" min="3" max="5" step="0.05"
+                  [ngModel]="metaPromedio()" (ngModelChange)="setMeta($event)"
+                  class="form-control form-control-sm tabular-nums meta-num"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="meta-quick">
+            @for (q of metasRapidas; track q.valor) {
+              <button class="meta-chip" (click)="setMeta(q.valor); calcularNotasNecesarias()">
+                {{ q.label }} ({{ q.valor }})
+              </button>
+            }
+            <button class="meta-chip" (click)="metaMantenerActual()">Mantener actual</button>
+          </div>
+
+          <div class="meta-actions">
+            <button class="btn btn-primary btn-sm" (click)="calcularNotasNecesarias()">
+              Calcular notas necesarias
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" (click)="restablecerSimulacion()">
+              Restablecer simulación
+            </button>
+          </div>
+
+          @if (metaMensaje()) {
+            <div class="meta-banner" [class.meta-banner--err]="!metaFactible()">
+              {{ metaMensaje() }}
+            </div>
+          }
+        </div>
+
+        <!-- Resumen "Nota mínima para pasar (3.0)" por materia -->
+        @if (d.materias.length) {
+          <div class="nm-grid">
+            @for (m of d.materias; track m.materiaId) {
+              <div class="nm-card" [class]="notaMinimaEstado(m).clase">
+                <div class="nm-card-head">
+                  <strong class="nm-name text-truncate">{{ m.nombre }}</strong>
+                  @if (m.codigo) {
+                    <span class="nm-code tabular-nums">{{ normalizeCode(m.codigo, '') }}</span>
+                  }
+                </div>
+                <div class="nm-stats tabular-nums">
+                  <span>{{ m.notaAcumulada | number: '1.2-2' }} / 5.0</span>
+                  <span class="text-muted">· {{ m.porcentajeRestante }}% restante</span>
+                </div>
+                <div class="nm-msg">{{ notaMinimaEstado(m).texto }}</div>
+              </div>
+            }
+          </div>
+        }
+
         <div class="effort-list">
           @for (it of d.effortMatrix; track it.corteId) {
             <div class="effort-item">

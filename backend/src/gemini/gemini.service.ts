@@ -255,6 +255,96 @@ export class GeminiService {
     }
   }
 
+  /**
+   * Variante multimodal de baja latencia (texto + imágenes). Igual que
+   * generateJsonFast pero recibe `parts` arbitrarias (incluye imágenes inline).
+   * El fallback a Groq solo aplica cuando NO hay imágenes (Groq es texto aquí);
+   * si hay imágenes, el respaldo es el Gemini secundario con timeout corto.
+   */
+  async generateJsonMultimodalFast<T>(
+    systemInstruction: string,
+    parts: Part[],
+    schema: Schema,
+    opts?: { allowGroqText?: string },
+  ): Promise<ProviderResult<T>> {
+    // --- 1) Modelo principal con timeout estricto ---
+    try {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: this.model,
+          contents: [{ role: 'user', parts }],
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.1,
+          },
+        }),
+        FAST_PRIMARY_TIMEOUT_MS,
+      );
+      const text = response.text;
+      if (!text) throw new Error('Respuesta vacía del modelo principal.');
+      return { data: this.parseJson<T>(text), provider: 'Gemini' };
+    } catch (primaryErr: unknown) {
+      const esTimeout = primaryErr instanceof TimeoutError;
+      const status = this.extractStatus(primaryErr);
+      this.logger.warn(
+        `Multimodal: principal (${this.model}) no resolvió ` +
+          `(${esTimeout ? 'timeout 20s' : 'status ' + status}). Conmutando…`,
+      );
+    }
+
+    // --- 2) Groq solo si es texto puro (sin imágenes) ---
+    if (this.groqApiKey && opts?.allowGroqText) {
+      try {
+        const data = await this.generateWithGroq<T>(
+          systemInstruction,
+          opts.allowGroqText,
+        );
+        return { data, provider: 'Groq' };
+      } catch (groqErr: unknown) {
+        this.logger.error(
+          `Groq (multimodal/texto) falló: ${(groqErr as Error)?.message}`,
+        );
+      }
+    }
+
+    // --- 2b) Respaldo Gemini secundario (timeout corto, sin reintentos) ---
+    try {
+      const response = await this.withTimeout(
+        this.client.models.generateContent({
+          model: this.fastFallbackModel,
+          contents: [{ role: 'user', parts }],
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json',
+            responseSchema: schema,
+            temperature: 0.1,
+          },
+        }),
+        FAST_FALLBACK_TIMEOUT_MS,
+      );
+      const text = response.text;
+      if (!text) throw new Error('Respuesta vacía del respaldo Gemini.');
+      return { data: this.parseJson<T>(text), provider: 'Respaldo' };
+    } catch (fallbackErr: unknown) {
+      this.logger.error(
+        `Multimodal: todos los proveedores fallaron: ${(fallbackErr as Error)?.message}`,
+      );
+      throw new ServiceUnavailableException(
+        'El servicio de IA está saturado y el respaldo no respondió a tiempo. ' +
+          'Inténtalo de nuevo en unos momentos.',
+      );
+    }
+  }
+
+  /** Construye una Part de imagen inline a partir de base64 (sin el prefijo data:). */
+  imagePart(base64: string, mimeType = 'image/png'): Part {
+    // Acepta data URLs completas y las limpia.
+    const clean = base64.replace(/^data:[^;]+;base64,/, '');
+    return { inlineData: { mimeType, data: clean } };
+  }
+
   /** Envuelve una promesa en un Promise.race con timeout estricto. */
   private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     let timer: NodeJS.Timeout;
